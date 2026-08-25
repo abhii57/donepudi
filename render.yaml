@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: pulsewire-news
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/articles
+    disk:
+      name: pulsewire-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
