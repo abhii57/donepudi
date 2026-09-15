@@ -1272,16 +1272,20 @@ async function submitSignup(event) {
 
     authModal.close();
 
-    updateAccount();
+if (response.user.role === 'admin') {
+  window.location.href = 'admin.html';
+  return;
+}
 
-    load();
+updateAccount();
+load();
 
-    toast(
-      `Welcome, ${
-        response.user.name
-          .split(' ')[0]
-      }!`
-    );
+toast(
+  `Welcome, ${
+    response.user.name
+      .split(' ')[0]
+  }!`
+);
   } catch (error) {
     toast(
       error.message
