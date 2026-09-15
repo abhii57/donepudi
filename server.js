@@ -79,7 +79,7 @@ function adminOnly(req, res, next) {
   requireAuth(req, res, () => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
-        error: 'Only editors can publish news.'
+        error: 'Only administrators can perform this action.'
       });
     }
 
@@ -904,6 +904,344 @@ app.post(
     res.status(201).json(comment);
   }
 );
+
+
+/*
+ * TOURNAMENTS
+ *
+ * Tournament management is admin-only for writes.
+ * Public users can view tournaments and live streams.
+ */
+app.get('/api/tournaments', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT *
+       FROM tournaments
+       ORDER BY
+         live_status DESC,
+         start_date ASC,
+         created_at DESC`
+    );
+
+    for (const tournament of rows) {
+      const matches =
+        await pool.query(
+          `SELECT *
+           FROM tournament_matches
+           WHERE tournament_id = $1
+           ORDER BY
+             match_date ASC,
+             created_at ASC`,
+          [tournament.id]
+        );
+
+      tournament.matches =
+        matches.rows;
+    }
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Tournament list error:', error);
+    res.status(500).json({
+      error: 'Unable to load tournaments.'
+    });
+  }
+});
+
+app.post('/api/tournaments', adminOnly, async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      venue,
+      startDate,
+      endDate,
+      liveUrl,
+      liveStatus
+    } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        error: 'Tournament name is required.'
+      });
+    }
+
+    const {
+      rows: [tournament]
+    } = await pool.query(
+      `INSERT INTO tournaments
+       (
+         name,
+         description,
+         venue,
+         start_date,
+         end_date,
+         live_url,
+         live_status
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        name.trim(),
+        description?.trim() || null,
+        venue?.trim() || null,
+        startDate || null,
+        endDate || null,
+        liveUrl?.trim() || null,
+        !!liveStatus
+      ]
+    );
+
+    res.status(201).json(tournament);
+  } catch (error) {
+    console.error('Tournament create error:', error);
+    res.status(500).json({
+      error: 'Unable to create tournament.'
+    });
+  }
+});
+
+app.put('/api/tournaments/:id', adminOnly, async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      venue,
+      startDate,
+      endDate,
+      liveUrl,
+      liveStatus
+    } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        error: 'Tournament name is required.'
+      });
+    }
+
+    const {
+      rows: [tournament]
+    } = await pool.query(
+      `UPDATE tournaments
+       SET
+         name = $1,
+         description = $2,
+         venue = $3,
+         start_date = $4,
+         end_date = $5,
+         live_url = $6,
+         live_status = $7,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8
+       RETURNING *`,
+      [
+        name.trim(),
+        description?.trim() || null,
+        venue?.trim() || null,
+        startDate || null,
+        endDate || null,
+        liveUrl?.trim() || null,
+        !!liveStatus,
+        +req.params.id
+      ]
+    );
+
+    if (!tournament) {
+      return res.status(404).json({
+        error: 'Tournament not found.'
+      });
+    }
+
+    res.json(tournament);
+  } catch (error) {
+    console.error('Tournament update error:', error);
+    res.status(500).json({
+      error: 'Unable to update tournament.'
+    });
+  }
+});
+
+app.delete('/api/tournaments/:id', adminOnly, async (req, res) => {
+  try {
+    const result =
+      await pool.query(
+        `DELETE FROM tournaments
+         WHERE id = $1
+         RETURNING id`,
+        [+req.params.id]
+      );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        error: 'Tournament not found.'
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Tournament delete error:', error);
+    res.status(500).json({
+      error: 'Unable to delete tournament.'
+    });
+  }
+});
+
+app.post('/api/tournaments/:id/matches', adminOnly, async (req, res) => {
+  try {
+    const {
+      teamA,
+      teamB,
+      matchDate,
+      venue,
+      scoreA,
+      scoreB,
+      status,
+      liveUrl
+    } = req.body;
+
+    if (!teamA?.trim() || !teamB?.trim()) {
+      return res.status(400).json({
+        error: 'Both team names are required.'
+      });
+    }
+
+    const tournament =
+      await pool.query(
+        `SELECT id FROM tournaments WHERE id = $1`,
+        [+req.params.id]
+      );
+
+    if (!tournament.rows.length) {
+      return res.status(404).json({
+        error: 'Tournament not found.'
+      });
+    }
+
+    const {
+      rows: [match]
+    } = await pool.query(
+      `INSERT INTO tournament_matches
+       (
+         tournament_id,
+         team_a,
+         team_b,
+         match_date,
+         venue,
+         score_a,
+         score_b,
+         status,
+         live_url
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING *`,
+      [
+        +req.params.id,
+        teamA.trim(),
+        teamB.trim(),
+        matchDate || null,
+        venue?.trim() || null,
+        scoreA?.trim() || '',
+        scoreB?.trim() || '',
+        status?.trim() || 'Upcoming',
+        liveUrl?.trim() || null
+      ]
+    );
+
+    res.status(201).json(match);
+  } catch (error) {
+    console.error('Match create error:', error);
+    res.status(500).json({
+      error: 'Unable to add match.'
+    });
+  }
+});
+
+app.put('/api/tournament-matches/:id', adminOnly, async (req, res) => {
+  try {
+    const {
+      teamA,
+      teamB,
+      matchDate,
+      venue,
+      scoreA,
+      scoreB,
+      status,
+      liveUrl
+    } = req.body;
+
+    if (!teamA?.trim() || !teamB?.trim()) {
+      return res.status(400).json({
+        error: 'Both team names are required.'
+      });
+    }
+
+    const {
+      rows: [match]
+    } = await pool.query(
+      `UPDATE tournament_matches
+       SET
+         team_a = $1,
+         team_b = $2,
+         match_date = $3,
+         venue = $4,
+         score_a = $5,
+         score_b = $6,
+         status = $7,
+         live_url = $8
+       WHERE id = $9
+       RETURNING *`,
+      [
+        teamA.trim(),
+        teamB.trim(),
+        matchDate || null,
+        venue?.trim() || null,
+        scoreA?.trim() || '',
+        scoreB?.trim() || '',
+        status?.trim() || 'Upcoming',
+        liveUrl?.trim() || null,
+        +req.params.id
+      ]
+    );
+
+    if (!match) {
+      return res.status(404).json({
+        error: 'Match not found.'
+      });
+    }
+
+    res.json(match);
+  } catch (error) {
+    console.error('Match update error:', error);
+    res.status(500).json({
+      error: 'Unable to update match.'
+    });
+  }
+});
+
+app.delete('/api/tournament-matches/:id', adminOnly, async (req, res) => {
+  try {
+    const result =
+      await pool.query(
+        `DELETE FROM tournament_matches
+         WHERE id = $1
+         RETURNING id`,
+        [+req.params.id]
+      );
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        error: 'Match not found.'
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Match delete error:', error);
+    res.status(500).json({
+      error: 'Unable to delete match.'
+    });
+  }
+});
 
 /*
  * START SERVER

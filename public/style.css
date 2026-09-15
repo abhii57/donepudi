@@ -526,7 +526,7 @@ nav {
   .mobile-bottom-nav {
     position: fixed;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     left: 0;
     right: 0;
     bottom: 0;
@@ -550,8 +550,21 @@ nav {
   }
 
   .mobile-bottom-nav span {
-    font-size: 25px;
-    line-height: 1;
+    width: 25px;
+    height: 25px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-bottom-nav svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .mobile-bottom-nav small {

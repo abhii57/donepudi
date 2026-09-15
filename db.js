@@ -119,6 +119,34 @@ export async function initializeDatabase() {
       content TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+
+    CREATE TABLE IF NOT EXISTS tournaments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      venue TEXT,
+      start_date TEXT,
+      end_date TEXT,
+      live_url TEXT,
+      live_status INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tournament_matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+      team_a TEXT NOT NULL,
+      team_b TEXT NOT NULL,
+      match_date TEXT,
+      venue TEXT,
+      score_a TEXT,
+      score_b TEXT,
+      status TEXT NOT NULL DEFAULT 'Upcoming',
+      live_url TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   /*
