@@ -4,27 +4,173 @@ import { dirname, join } from 'node:path';
 import bcrypt from 'bcryptjs';
 
 const databaseFile = join(process.cwd(), 'data', 'pulsewire.sqlite');
+
 let database;
-function persist() { mkdirSync(dirname(databaseFile), { recursive: true }); writeFileSync(databaseFile, Buffer.from(database.export())); }
-export const pool = { async query(sql, params = []) { const statement = sql.replace(/NOW\(\)/g, 'CURRENT_TIMESTAMP'); const isRead = /^\s*(SELECT|WITH)/i.test(statement) || /\sRETURNING\s/i.test(statement); if (isRead) { const result = database.exec(statement, params); const first = result[0]; const rows = first ? first.values.map(values => Object.fromEntries(first.columns.map((column, index) => [column, values[index]]))) : []; if (!/^\s*(SELECT|WITH)/i.test(statement)) persist(); return { rows, rowCount: rows.length }; } database.run(statement, params); const rowCount = database.getRowsModified(); persist(); return { rows: [], rowCount }; } };
+
+function persist() {
+  mkdirSync(dirname(databaseFile), { recursive: true });
+  writeFileSync(
+    databaseFile,
+    Buffer.from(database.export())
+  );
+}
+
+export const pool = {
+  async query(sql, params = []) {
+    const statement = sql.replace(/NOW\(\)/g, 'CURRENT_TIMESTAMP');
+    const isRead =
+      /^\s*(SELECT|WITH)/i.test(statement) ||
+      /\sRETURNING\s/i.test(statement);
+
+    if (isRead) {
+      const result = database.exec(statement, params);
+      const first = result[0];
+
+      const rows = first
+        ? first.values.map(values =>
+            Object.fromEntries(
+              first.columns.map((column, index) => [
+                column,
+                values[index]
+              ])
+            )
+          )
+        : [];
+
+      if (!/^\s*(SELECT|WITH)/i.test(statement)) {
+        persist();
+      }
+
+      return {
+        rows,
+        rowCount: rows.length
+      };
+    }
+
+    database.run(statement, params);
+
+    const rowCount = database.getRowsModified();
+
+    persist();
+
+    return {
+      rows: [],
+      rowCount
+    };
+  }
+};
+
 export async function initializeDatabase() {
   const SQL = await initSqlJs();
-  database = existsSync(databaseFile) ? new SQL.Database(readFileSync(databaseFile)) : new SQL.Database();
+
+  database = existsSync(databaseFile)
+    ? new SQL.Database(readFileSync(databaseFile))
+    : new SQL.Database();
+
   database.exec(`
     PRAGMA foreign_keys = ON;
-    CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'reader', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE IF NOT EXISTS articles (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, excerpt TEXT NOT NULL, body TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'General', image_url TEXT, author_id INTEGER REFERENCES users(id), published_at TEXT DEFAULT CURRENT_TIMESTAMP, is_breaking INTEGER DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS members (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, photo_url TEXT, note TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE IF NOT EXISTS help_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, work TEXT NOT NULL, mobile TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE IF NOT EXISTS likes (user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, article_id));
-    CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'reader',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      excerpt TEXT NOT NULL,
+      body TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'General',
+      image_url TEXT,
+      author_id INTEGER REFERENCES users(id),
+      published_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      is_breaking INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      photo_url TEXT,
+      note TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS help_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      work TEXT NOT NULL,
+      mobile TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS likes (
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, article_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
-  const { rows: [admin] } = await pool.query('SELECT id FROM users WHERE email = $1', ['admin@pulsewire.test']);
-  if (!admin) {
-    const hash = await bcrypt.hash('Admin123!', 10);
-    const { rows: [user] } = await pool.query("INSERT INTO users (name,email,password_hash,role) VALUES ('PulseWire Editor','admin@pulsewire.test',$1,'admin') RETURNING id", [hash]);
-    const stories = [['Global markets rally as clean-energy investment reaches new high', 'Investment in renewable infrastructure is reshaping the global economic outlook, with new funds flowing into next-generation energy.', 'Economy', 1, 'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=1200&q=85'], ['City unveils a people-first plan for the future of urban transit', 'A new network of rapid buses, protected bike lanes, and shaded walking routes will connect neighborhoods.', 'Cities', 0, 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=900&q=85'], ['The quiet science behind a better night’s sleep', 'Researchers are finding practical, low-tech ways to help our bodies recover and recharge.', 'Wellness', 0, 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=900&q=85']];
-    for (const story of stories) await pool.query('INSERT INTO articles (title,excerpt,body,category,is_breaking,image_url,author_id) VALUES ($1,$2,$2,$3,$4,$5,$6)', [...story, user.id]);
+
+  /*
+   * ADMIN ACCOUNT
+   *
+   * The admin email and password are NOT stored in this source code.
+   * They must be supplied through environment variables.
+   */
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error(
+      'ADMIN_EMAIL and ADMIN_PASSWORD must be configured.'
+    );
   }
+
+  /*
+   * Find the existing admin account by role.
+   * This allows us to replace the old demo admin account.
+   */
+
+  const { rows: [admin] } = await pool.query(
+    "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
+  );
+
+  const adminHash = await bcrypt.hash(adminPassword, 10);
+
+  if (admin) {
+    await pool.query(
+      'UPDATE users SET email = $1, password_hash = $2, name = $3, role = $4 WHERE id = $5',
+      [
+        adminEmail.toLowerCase(),
+        adminHash,
+        'Donepudi Admin',
+        'admin',
+        admin.id
+      ]
+    );
+  } else {
+    await pool.query(
+      "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
+      [
+        'Donepudi Admin',
+        adminEmail.toLowerCase(),
+        adminHash
+      ]
+    );
+  }
+
   persist();
 }
