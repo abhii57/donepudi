@@ -1,1 +1,51 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>PulseWire — News that moves</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><div class="ticker"><span>LIVE</span><div>Markets are open · Follow the stories shaping your world</div></div><nav><a class="brand" href="#">pulse<span>wire</span></a><div class="navlinks"><a href="#feed">Top stories</a><a href="#feed">Technology</a><a href="#feed">Culture</a></div><div id="account"></div></nav><main><section class="hero"><div><p class="eyebrow">THE DAILY BRIEFING · AUGUST 25</p><h1>Make sense of<br><i>what matters.</i></h1><p class="sub">Independent reporting, fresh perspectives, and the conversations that move us forward.</p><button class="primary" onclick="document.querySelector('#feed').scrollIntoView({behavior:'smooth'})">Explore today's feed <b>→</b></button></div><div class="hero-art"><div class="orb"></div><p>BE CURIOUS.<br>STAY CONNECTED.</p></div></section><section class="section-head" id="feed"><div><p class="eyebrow">ON THE PULSE</p><h2>Latest stories</h2></div><div class="filters"><button class="active">All</button><button>Economy</button><button>Cities</button><button>Wellness</button></div></section><div id="feedGrid" class="feed-grid"><p class="loading">Loading the latest...</p></div></main><dialog id="authModal"><button class="close" onclick="authModal.close()">×</button><div id="authContent"></div></dialog><dialog id="postModal"><button class="close" onclick="postModal.close()">×</button><form id="postForm"><p class="eyebrow">EDITOR DESK</p><h2>Publish a story</h2><input name="title" placeholder="Headline" required><textarea name="excerpt" placeholder="Short summary" required></textarea><input name="category" placeholder="Category (e.g. Technology)"><input name="imageUrl" placeholder="Cover image URL (optional)"><label class="check"><input name="isBreaking" type="checkbox"> Mark as breaking news</label><button class="primary">Publish story →</button></form></dialog><div id="toast"></div><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Donepudi — News that moves</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .village-map{display:grid;grid-template-columns:.8fr 1.2fr;gap:28px;margin-top:70px;padding:34px;border:1px solid #dedbd4;border-radius:20px;background:#fffdfa}.map-copy{align-self:center}.map-copy h2{font-family:'Playfair Display';font-size:38px;letter-spacing:-.045em;margin:0}.map-copy>p:not(.eyebrow){color:#55615c;line-height:1.55;max-width:330px}.map-actions{display:flex;flex-wrap:wrap;align-items:center;gap:15px;margin-top:24px}.map-actions .primary{text-decoration:none}.map-link{color:#1d3834;font-size:14px;font-weight:700;text-decoration:none}.village-map iframe{display:block;width:100%;min-height:300px;border:0;border-radius:13px;background:#d9eee5}.admin-actions{display:flex;gap:10px;margin-top:14px}.admin-actions button{border:0;background:transparent;padding:0;color:#52615a;font:600 12px 'DM Sans';cursor:pointer}.admin-actions .delete{color:#c94b42}.user-list{display:grid;gap:10px;margin-top:18px;max-height:360px;overflow:auto}.user-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border:1px solid #dedbd4;border-radius:10px}.user-row strong,.user-row small{display:block}.user-row small{margin-top:3px;color:#68726d}.role-tag{border-radius:999px;background:#d9eee5;padding:5px 8px;font-size:11px;font-weight:700;text-transform:uppercase}@media(max-width:760px){.village-map{grid-template-columns:1fr;margin-top:45px;padding:23px}.map-copy h2{font-size:33px}.village-map iframe{min-height:250px}}
+    .member-section,.help-section{margin-top:70px}.member-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.member-card{overflow:hidden;border:1px solid #dedbd4;border-radius:16px;background:#fffdfa}.member-card img{display:block;width:100%;height:210px;object-fit:cover;background:#d9eee5}.member-card div{padding:17px}.member-card h3{font:600 22px 'Playfair Display';margin:0 0 8px}.member-card p{margin:0;color:#68726d;font-size:13px;line-height:1.5}.help-section{display:grid;grid-template-columns:1fr 1fr;gap:35px;padding:34px;border-radius:20px;background:#d9eee5}.help-section h2{font:600 38px 'Playfair Display';margin:0}.help-section>div>p:last-child{color:#55615c;line-height:1.55}@media(max-width:760px){.member-grid{grid-template-columns:1fr}.help-section{grid-template-columns:1fr;margin-top:45px;padding:23px}}
+  </style>
+</head>
+<body>
+  <div class="ticker"><span>LIVE</span><div>Markets are open · Follow the stories shaping your world</div></div>
+  <nav>
+    <a class="brand" href="#">Done<span>pudi</span></a>
+    <div class="navlinks">
+      <a href="news.html">Top stories</a><a href="members.html">Members</a><a href="help.html">Helpline</a><a href="map.html">Map</a><a href="about.html">About</a><a href="admin.html">Admin login</a>
+    </div>
+    <div id="account"></div>
+  </nav>
+  <main>
+    <section class="hero"><div><p class="eyebrow">THE DAILY BRIEFING · AUGUST 25</p><h1>Make sense of<br><i>what matters.</i></h1><p class="sub">Independent reporting, fresh perspectives, and the conversations that move us forward.</p><button class="primary" onclick="document.querySelector('#feed').scrollIntoView({behavior:'smooth'})">Explore today's feed <b>→</b></button></div><div class="hero-art"><div class="orb"></div><p>BE CURIOUS.<br>STAY CONNECTED.</p></div></section>
+    <section class="section-head" id="feed"><div><p class="eyebrow">ON THE PULSE</p><h2>Latest stories</h2></div><div class="filters"><button class="active">All</button><button>Economy</button><button>Cities</button><button>Wellness</button></div></section>
+    <div id="feedGrid" class="feed-grid"><p class="loading">Loading the latest...</p></div>
+    <section class="member-section" id="members" aria-labelledby="members-title"><div class="section-head"><div><p class="eyebrow">OUR COMMUNITY</p><h2 id="members-title">Members</h2></div></div><div id="memberGrid" class="member-grid"><p class="loading">Loading members...</p></div></section>
+    <section class="help-section" id="helpline" aria-labelledby="help-title"><div><p class="eyebrow">HELP DESK</p><h2 id="help-title">How can we help?</h2><p>Leave your name, work, and mobile number. Our team will contact you.</p></div><form id="helpForm"><input name="name" placeholder="Your name" required><input name="work" placeholder="Your work or occupation" required><input name="mobile" type="tel" inputmode="numeric" placeholder="Mobile number" required><button class="primary">Send request →</button></form></section>
+    <section class="village-map" id="map" aria-labelledby="map-title">
+      <div class="map-copy">
+        <p class="eyebrow">MAPS</p>
+        <h2 id="map-title">Donnepudi village</h2>
+        <p>Find Donnepudi village, Andhra Pradesh — pincode 522324.</p>
+        <div class="map-actions">
+          <a class="primary" href="https://www.google.com/maps/@16.1815016,80.8016821,17z/data=!3m1!1e3" target="_blank" rel="noopener">Open satellite map <b>↗</b></a>
+          <a class="map-link" href="https://www.google.com/maps/dir/?api=1&amp;destination=16.1815016%2C80.8016821" target="_blank" rel="noopener">Get directions →</a>
+        </div>
+      </div>
+      <iframe title="Satellite map of Donepudi village, 522324" src="https://www.google.com/maps?q=16.1815016%2C80.8016821&amp;t=k&amp;z=17&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </section>
+  </main>
+  <dialog id="authModal"><button class="close" onclick="authModal.close()">×</button><div id="authContent"></div></dialog>
+  <dialog id="postModal"><button class="close" onclick="postModal.close()">×</button><form id="postForm"><input name="id" type="hidden"><p class="eyebrow">EDITOR DESK</p><h2 id="postModalTitle">Publish a story</h2><input name="title" placeholder="Headline" required><textarea name="excerpt" placeholder="Short summary" required></textarea><input name="category" placeholder="Category (e.g. Technology)"><label class="check">Upload cover image <input name="imageFile" type="file" accept="image/*"></label><input name="imageUrl" type="url" placeholder="Or paste a cover image URL (optional)"><label class="check"><input name="isBreaking" type="checkbox"> Mark as breaking news</label><button class="primary" id="postSubmitLabel">Publish story →</button></form></dialog>
+  <dialog id="userModal"><button class="close" onclick="userModal.close()">×</button><div id="userContent"></div></dialog>
+  <dialog id="memberModal"><button class="close" onclick="memberModal.close()">×</button><form id="memberForm"><p class="eyebrow">MEMBER DIRECTORY</p><h2>Add a member</h2><input name="name" placeholder="Member name" required><label class="check">Upload photo <input name="photoFile" type="file" accept="image/*"></label><input name="photoUrl" type="url" placeholder="Or paste a photo URL"><textarea name="note" placeholder="Member note" required></textarea><button class="primary">Add member →</button></form></dialog>
+  <div id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
