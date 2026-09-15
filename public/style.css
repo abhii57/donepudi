@@ -596,3 +596,157 @@ nav {
 .mobile-menu a[href="help.html"] {
   display: none !important;
 }
+
+/* ===== DONEPUDI MOBILE REDESIGN ===== */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+
+  body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  main {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  nav {
+    width: 100%;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .hero {
+    width: 100%;
+    margin-top: 12px;
+    padding: 24px 18px;
+    border-radius: 18px;
+    grid-template-columns: 1fr;
+  }
+
+  .hero-art {
+    display: none;
+  }
+
+  .hero h1 {
+    font-size: clamp(34px, 10vw, 48px);
+    line-height: 1.02;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .filters {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 5px;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filters button {
+    flex: 0 0 auto;
+  }
+
+  /* Instagram-style news feed */
+  #feedGrid,
+  .feed-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+    width: 100% !important;
+  }
+
+  #feedGrid > *,
+  .feed-grid > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .feed-card,
+  .story-card,
+  .news-card {
+    width: 100% !important;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #fffdfa;
+  }
+
+  .feed-card img,
+  .story-card img,
+  .news-card img {
+    width: 100%;
+    height: auto;
+    min-height: 210px;
+    max-height: 430px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .feed-card > div,
+  .story-card > div,
+  .news-card > div {
+    min-width: 0;
+  }
+
+  .member-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .member-card img {
+    height: 250px;
+  }
+
+  .village-map {
+    width: 100%;
+    grid-template-columns: 1fr !important;
+    padding: 18px !important;
+  }
+
+  .village-map iframe {
+    width: 100%;
+    min-height: 250px;
+  }
+
+  dialog {
+    width: calc(100% - 24px);
+    max-width: 100%;
+    margin: 12px auto;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+}
+
+/* Hide Help Desk section */
+#helpline,
+.help-section {
+  display: none !important;
+}
+

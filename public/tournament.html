@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Donepudi — Tournaments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .tournament-page{padding-top:35px}
+    .tournament-hero{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;padding:34px;border:1px solid var(--line);border-radius:24px;background:#fffdfa;margin-bottom:30px}
+    .tournament-hero h1{font:600 clamp(42px,6vw,68px) 'Playfair Display';letter-spacing:-.05em;margin:0 0 14px}
+    .tournament-hero p:not(.eyebrow){color:#55615c;line-height:1.6;max-width:650px}
+    .tournament-meta{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+    .tournament-pill{border-radius:999px;background:var(--mint);padding:8px 12px;font-size:12px;font-weight:700}
+    .live-pill{background:#ffe0d9;color:#c64e3f}
+    .stream-card{overflow:hidden;border-radius:20px;background:#101817;min-height:270px;display:flex;align-items:center;justify-content:center}
+    .stream-card iframe{width:100%;height:320px;border:0}
+    .stream-placeholder{text-align:center;color:#fff;padding:35px}
+    .stream-placeholder strong{display:block;font:600 28px 'Playfair Display';margin-bottom:8px}
+    .stream-placeholder p{color:#cbd4d0;margin:0 0 20px}
+    .tournament-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+    .tournament-card,.match-card,.admin-panel{border:1px solid var(--line);border-radius:18px;background:#fffdfa;padding:22px}
+    .tournament-card h3,.match-card h3{font:600 27px 'Playfair Display';margin:0 0 8px}
+    .tournament-card p,.match-card p{color:#68726d;line-height:1.5}
+    .match-list{display:grid;gap:14px;margin-top:18px}
+    .match-card{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+    .match-score{font:700 24px 'DM Sans';white-space:nowrap}
+    .match-status{display:inline-block;border-radius:999px;padding:6px 9px;background:#edf0ec;font-size:10px;font-weight:700;text-transform:uppercase}
+    .match-status.live{background:#ffe0d9;color:#c64e3f}
+    .admin-panel{margin-top:30px;background:#d9eee5}
+    .admin-panel h2{font:600 34px 'Playfair Display';margin:0 0 18px}
+    .admin-form{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .admin-form .full{grid-column:1/-1}
+    .admin-form label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#53605a}
+    .admin-form input,.admin-form textarea,.admin-form select{width:100%;margin-top:6px}
+    .admin-actions-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+    .admin-list{display:grid;gap:12px;margin-top:20px}
+    .admin-item{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#fffdfa;border:1px solid var(--line);border-radius:12px;padding:13px}
+    .admin-item strong,.admin-item small{display:block}
+    .admin-item small{color:#68726d;margin-top:3px}
+    .hidden{display:none!important}
+    @media(max-width:760px){
+      .tournament-page{padding-top:20px}
+      .tournament-hero{grid-template-columns:1fr;padding:20px;border-radius:20px}
+      .tournament-hero h1{font-size:42px}
+      .stream-card iframe{height:220px}
+      .tournament-grid{grid-template-columns:1fr}
+      .admin-form{grid-template-columns:1fr}
+      .admin-form .full{grid-column:auto}
+      .match-card{grid-template-columns:1fr}
+      .match-score{font-size:22px}
+    }
+  </style>
+</head>
+<body>
+  <div class="ticker"><span>LIVE</span><div>Donepudi tournaments · Follow every match</div></div>
+
+  <nav>
+    <a class="brand" href="index.html">Done<span>pudi</span></a>
+    <div class="navlinks">
+      <a href="news.html">Top stories</a>
+      <a class="active" href="tournament.html">Tournament</a>
+      <a href="members.html">Members</a>
+      <a href="map.html">Map</a>
+      <a href="about.html">About</a>
+      <a href="admin.html">Admin login</a>
+    </div>
+    <div id="account"></div>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Open menu" aria-expanded="false">☰</button>
+  </nav>
+
+  <div id="mobileMenu" class="mobile-menu">
+    <a href="news.html" onclick="closeMobileMenu()">Top stories</a>
+    <a href="tournament.html" onclick="closeMobileMenu()">Tournament</a>
+    <a href="members.html" onclick="closeMobileMenu()">Members</a>
+    <a href="map.html" onclick="closeMobileMenu()">Map</a>
+    <a href="about.html" onclick="closeMobileMenu()">About</a>
+    <a href="admin.html" onclick="closeMobileMenu()">Admin login</a>
+    <div class="mobile-auth">
+      <button class="ghost" onclick="openAuth('login');closeMobileMenu()">Log in</button>
+      <button class="primary" onclick="openAuth('signup');closeMobileMenu()">Sign up</button>
+    </div>
+  </div>
+
+  <main class="tournament-page">
+    <section class="section-head">
+      <div>
+        <p class="eyebrow">SPORTS · DONEPUDI</p>
+        <h2>Tournaments</h2>
+      </div>
+    </section>
+
+    <div id="publicContent">
+      <p class="loading">Loading tournaments...</p>
+    </div>
+
+    <section id="adminPanel" class="admin-panel hidden">
+      <p class="eyebrow">ADMINISTRATION</p>
+      <h2>Manage tournaments & live stream</h2>
+
+      <p class="demo">
+        Only administrators can create tournaments, add matches and attach a live stream.
+      </p>
+
+      <form id="tournamentForm" class="admin-form">
+        <input type="hidden" name="id">
+
+        <label>
+          Tournament name
+          <input name="name" required placeholder="Donepudi Cricket Tournament">
+        </label>
+
+        <label>
+          Venue
+          <input name="venue" placeholder="Donepudi Ground">
+        </label>
+
+        <label>
+          Start date
+          <input name="startDate" type="datetime-local">
+        </label>
+
+        <label>
+          End date
+          <input name="endDate" type="datetime-local">
+        </label>
+
+        <label class="full">
+          Description
+          <textarea name="description" rows="3" placeholder="Tournament details"></textarea>
+        </label>
+
+        <label class="full">
+          YouTube Live URL
+          <input name="liveUrl" type="url" placeholder="https://www.youtube.com/watch?v=...">
+        </label>
+
+        <label>
+          Live now
+          <select name="liveStatus">
+            <option value="0">No</option>
+            <option value="1">Yes — LIVE</option>
+          </select>
+        </label>
+
+        <div class="admin-actions-row">
+          <button class="primary" type="submit">Save tournament →</button>
+          <button class="ghost" type="button" id="cancelTournament">Clear</button>
+        </div>
+      </form>
+
+      <div id="adminTournamentList" class="admin-list"></div>
+
+      <hr style="border:0;border-top:1px solid #b9d4c9;margin:26px 0">
+
+      <h2>Add match</h2>
+
+      <form id="matchForm" class="admin-form">
+        <label class="full">
+          Tournament
+          <select name="tournamentId" id="matchTournament" required></select>
+        </label>
+
+        <label>
+          Team / Player A
+          <input name="teamA" required placeholder="Team A">
+        </label>
+
+        <label>
+          Team / Player B
+          <input name="teamB" required placeholder="Team B">
+        </label>
+
+        <label>
+          Match date
+          <input name="matchDate" type="datetime-local">
+        </label>
+
+        <label>
+          Venue
+          <input name="venue" placeholder="Main ground">
+        </label>
+
+        <label>
+          Score A
+          <input name="scoreA" placeholder="0">
+        </label>
+
+        <label>
+          Score B
+          <input name="scoreB" placeholder="0">
+        </label>
+
+        <label>
+          Status
+          <select name="status">
+            <option>Upcoming</option>
+            <option>LIVE</option>
+            <option>Completed</option>
+          </select>
+        </label>
+
+        <label>
+          Match live URL
+          <input name="liveUrl" type="url" placeholder="YouTube live URL">
+        </label>
+
+        <div class="admin-actions-row full">
+          <button class="primary" type="submit">Add match →</button>
+        </div>
+      </form>
+
+      <div id="adminMatchList" class="admin-list"></div>
+    </section>
+
+    <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+  <a href="index.html"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5 9.8V21h14V9.8"/><path d="M9 21v-6h6v6"/></svg></span><small>Home</small></a>
+  <a href="news.html"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><small>News</small></a>
+  <a class="active" href="tournament.html"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 12v4M9 20h6M10 16h4"/></svg></span><small>Tournament</small></a>
+  <a href="members.html"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/><circle cx="5" cy="10" r="2"/><circle cx="19" cy="10" r="2"/></svg></span><small>Members</small></a>
+  <a href="map.html"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2V6Z"/><path d="M9 4v14M15 6v14"/></svg></span><small>Map</small></a>
+</nav>
+  </main>
+
+  <dialog id="authModal">
+    <button class="close" onclick="authModal.close()">×</button>
+    <div id="authContent"></div>
+  </dialog>
+
+  <div id="toast"></div>
+
+  <script src="app.js"></script>
+
+  <script>
+    const TOURNAMENT_API = 'https://donepudi.onrender.com';
+
+    const escapeTournament = value =>
+      String(value ?? '').replace(
+        /[&<>'"]/g,
+        character =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+          }[character])
+      );
+
+    function tournamentToken() {
+      return localStorage.token || '';
+    }
+
+    async function tournamentApi(path, options = {}) {
+      const response = await fetch(
+        TOURNAMENT_API + path,
+        {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(tournamentToken()
+              ? {
+                  Authorization:
+                    `Bearer ${tournamentToken()}`
+                }
+              : {})
+          }
+        }
+      );
+
+      const data =
+        await response.json().catch(
+          () => ({})
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+          'Tournament request failed.'
+        );
+      }
+
+      return data;
+    }
+
+    function youtubeId(url) {
+      if (!url) return '';
+
+      try {
+        const parsed =
+          new URL(url);
+
+        if (
+          parsed.hostname.includes(
+            'youtu.be'
+          )
+        ) {
+          return parsed.pathname
+            .replace('/', '')
+            .split('/')[0];
+        }
+
+        if (
+          parsed.searchParams.get('v')
+        ) {
+          return parsed.searchParams.get('v');
+        }
+
+        const parts =
+          parsed.pathname
+            .split('/')
+            .filter(Boolean);
+
+        const index =
+          parts.findIndex(
+            part =>
+              part === 'live' ||
+              part === 'embed' ||
+              part === 'shorts'
+          );
+
+        return index >= 0
+          ? parts[index + 1] || ''
+          : '';
+      } catch {
+        return '';
+      }
+    }
+
+    function formatTournamentDate(value) {
+      if (!value) return 'Date to be announced';
+
+      const date =
+        new Date(value);
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+        return value;
+      }
+
+      return date.toLocaleString(
+        'en-IN',
+        {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }
+      );
+    }
+
+    function streamBlock(tournament) {
+      const url =
+        tournament.live_url;
+
+      const id =
+        youtubeId(url);
+
+      if (
+        tournament.live_status &&
+        id
+      ) {
+        return `
+          <div class="stream-card">
+            <iframe
+              src="https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0"
+              title="Donepudi live tournament"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+        `;
+      }
+
+      if (id) {
+        return `
+          <div class="stream-card">
+            <iframe
+              src="https://www.youtube.com/embed/${encodeURIComponent(id)}?rel=0"
+              title="Donepudi tournament stream"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+        `;
+      }
+
+      if (url) {
+        return `
+          <div class="stream-card">
+            <div class="stream-placeholder">
+              <strong>Live stream</strong>
+              <p>The stream is available from the organiser.</p>
+              <a
+                class="primary"
+                href="${escapeTournament(url)}"
+                target="_blank"
+                rel="noopener">
+                Open live stream →
+              </a>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="stream-card">
+          <div class="stream-placeholder">
+            <strong>Live stream coming soon</strong>
+            <p>The administrator will add the tournament stream here.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTournament(tournament) {
+      const live =
+        Number(tournament.live_status) === 1;
+
+      const matches =
+        tournament.matches || [];
+
+      return `
+        <section class="tournament-hero">
+
+          <div>
+            <p class="eyebrow">
+              ${live ? '🔴 LIVE NOW' : 'UPCOMING TOURNAMENT'}
+            </p>
+
+            <h1>
+              ${escapeTournament(
+                tournament.name
+              )}
+            </h1>
+
+            <p>
+              ${escapeTournament(
+                tournament.description ||
+                'Follow tournament updates, fixtures, scores and live action from Donepudi.'
+              )}
+            </p>
+
+            <div class="tournament-meta">
+              ${
+                tournament.venue
+                  ? `
+                    <span class="tournament-pill">
+                      📍 ${escapeTournament(
+                        tournament.venue
+                      )}
+                    </span>
+                  `
+                  : ''
+              }
+
+              ${
+                tournament.start_date
+                  ? `
+                    <span class="tournament-pill">
+                      🗓 ${escapeTournament(
+                        formatTournamentDate(
+                          tournament.start_date
+                        )
+                      )}
+                    </span>
+                  `
+                  : ''
+              }
+
+              ${
+                live
+                  ? `
+                    <span class="tournament-pill live-pill">
+                      🔴 LIVE
+                    </span>
+                  `
+                  : ''
+              }
+            </div>
+          </div>
+
+          ${streamBlock(tournament)}
+
+        </section>
+
+        <section>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">FIXTURES</p>
+              <h2>Matches</h2>
+            </div>
+          </div>
+
+          ${
+            matches.length
+              ? `
+                <div class="match-list">
+                  ${matches
+                    .map(
+                      match => `
+                        <article class="match-card">
+
+                          <div>
+                            <span class="match-status ${
+                              match.status ===
+                              'LIVE'
+                                ? 'live'
+                                : ''
+                            }">
+                              ${escapeTournament(
+                                match.status
+                              )}
+                            </span>
+
+                            <h3>
+                              ${escapeTournament(
+                                match.team_a
+                              )}
+                              <span> vs </span>
+                              ${escapeTournament(
+                                match.team_b
+                              )}
+                            </h3>
+
+                            <p>
+                              ${
+                                match.match_date
+                                  ? escapeTournament(
+                                      formatTournamentDate(
+                                        match.match_date
+                                      )
+                                    )
+                                  : 'Date to be announced'
+                              }
+
+                              ${
+                                match.venue
+                                  ? ` · ${escapeTournament(
+                                      match.venue
+                                    )}`
+                                  : ''
+                              }
+                            </p>
+
+                            ${
+                              match.live_url
+                                ? `
+                                  <a
+                                    class="map-link"
+                                    href="${escapeTournament(
+                                      match.live_url
+                                    )}"
+                                    target="_blank"
+                                    rel="noopener">
+                                    Watch match →
+                                  </a>
+                                `
+                                : ''
+                            }
+
+                          </div>
+
+                          <div class="match-score">
+                            ${escapeTournament(
+                              match.score_a || '0'
+                            )}
+                            -
+                            ${escapeTournament(
+                              match.score_b || '0'
+                            )}
+                          </div>
+
+                        </article>
+                      `
+                    )
+                    .join('')}
+                </div>
+              `
+              : `
+                <div class="tournament-card">
+                  <h3>Fixtures coming soon</h3>
+                  <p>
+                    Match fixtures and scores will appear here.
+                  </p>
+                </div>
+              `
+          }
+        </section>
+      `;
+    }
+
+    function renderPublic(tournaments) {
+      const target =
+        document.querySelector(
+          '#publicContent'
+        );
+
+      if (!tournaments.length) {
+        target.innerHTML = `
+          <div class="tournament-card">
+            <p class="eyebrow">COMING SOON</p>
+            <h3>First tournament will appear here</h3>
+            <p>
+              Tournament details, fixtures and live coverage will be published here by the Donepudi administrator.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      target.innerHTML =
+        tournaments
+          .map(renderTournament)
+          .join('');
+    }
+
+    function renderAdmin(tournaments) {
+      const panel =
+        document.querySelector(
+          '#adminPanel'
+        );
+
+      const user =
+        JSON.parse(
+          localStorage.user ||
+          'null'
+        );
+
+      if (
+        user?.role !== 'admin'
+      ) {
+        panel.classList.add(
+          'hidden'
+        );
+        return;
+      }
+
+      panel.classList.remove(
+        'hidden'
+      );
+
+      const list =
+        document.querySelector(
+          '#adminTournamentList'
+        );
+
+      list.innerHTML =
+        tournaments
+          .map(
+            tournament => `
+              <div class="admin-item">
+
+                <div>
+                  <strong>
+                    ${escapeTournament(
+                      tournament.name
+                    )}
+                  </strong>
+
+                  <small>
+                    ${
+                      tournament.live_status
+                        ? '🔴 LIVE'
+                        : 'Not live'
+                    }
+                    ·
+                    ${(
+                      tournament.matches ||
+                      []
+                    ).length}
+                    matches
+                  </small>
+                </div>
+
+                <div class="admin-actions-row">
+
+                  <button
+                    class="ghost"
+                    type="button"
+                    onclick="editTournament(${tournament.id})">
+                    Edit
+                  </button>
+
+                  <button
+                    class="ghost"
+                    type="button"
+                    onclick="deleteTournament(${tournament.id})">
+                    Delete
+                  </button>
+
+                </div>
+
+              </div>
+            `
+          )
+          .join('');
+
+      const select =
+        document.querySelector(
+          '#matchTournament'
+        );
+
+      select.innerHTML =
+        tournaments.length
+          ? tournaments
+              .map(
+                tournament => `
+                  <option value="${tournament.id}">
+                    ${escapeTournament(
+                      tournament.name
+                    )}
+                  </option>
+                `
+              )
+              .join('')
+          : `
+              <option value="">
+                Create a tournament first
+              </option>
+            `;
+
+      const matches =
+        tournaments.flatMap(
+          tournament =>
+            (tournament.matches || [])
+              .map(match => ({
+                ...match,
+                tournamentName:
+                  tournament.name
+              }))
+        );
+
+      document.querySelector(
+        '#adminMatchList'
+      ).innerHTML =
+        matches.length
+          ? matches
+              .map(
+                match => `
+                  <div class="admin-item">
+
+                    <div>
+                      <strong>
+                        ${escapeTournament(
+                          match.team_a
+                        )}
+                        vs
+                        ${escapeTournament(
+                          match.team_b
+                        )}
+                      </strong>
+
+                      <small>
+                        ${escapeTournament(
+                          match.tournamentName
+                        )}
+                        ·
+                        ${escapeTournament(
+                          match.status
+                        )}
+                        ·
+                        ${escapeTournament(
+                          match.score_a || '0'
+                        )}
+                        -
+                        ${escapeTournament(
+                          match.score_b || '0'
+                        )}
+                      </small>
+                    </div>
+
+                    <button
+                      class="ghost"
+                      type="button"
+                      onclick="deleteMatch(${match.id})">
+                      Delete
+                    </button>
+
+                  </div>
+                `
+              )
+              .join('')
+          : `
+              <p class="demo">
+                No matches added yet.
+              </p>
+            `;
+    }
+
+    let tournaments = [];
+
+    async function loadTournaments() {
+      try {
+        tournaments =
+          await tournamentApi(
+            '/api/tournaments'
+          );
+
+        renderPublic(
+          tournaments
+        );
+
+        renderAdmin(
+          tournaments
+        );
+
+      } catch (error) {
+
+        document.querySelector(
+          '#publicContent'
+        ).innerHTML = `
+          <div class="tournament-card">
+            <h3>Unable to load tournaments</h3>
+            <p>
+              ${escapeTournament(
+                error.message
+              )}
+            </p>
+          </div>
+        `;
+      }
+    }
+
+    function resetTournamentForm() {
+      const form =
+        document.querySelector(
+          '#tournamentForm'
+        );
+
+      form.reset();
+
+      form.elements.id.value =
+        '';
+
+      form.elements.liveStatus.value =
+        '0';
+    }
+
+    window.editTournament =
+      id => {
+
+        const tournament =
+          tournaments.find(
+            item =>
+              item.id === id
+          );
+
+        if (!tournament) return;
+
+        const form =
+          document.querySelector(
+            '#tournamentForm'
+          );
+
+        form.elements.id.value =
+          tournament.id;
+
+        form.elements.name.value =
+          tournament.name || '';
+
+        form.elements.description.value =
+          tournament.description || '';
+
+        form.elements.venue.value =
+          tournament.venue || '';
+
+        form.elements.startDate.value =
+          tournament.start_date
+            ? tournament.start_date
+                .replace(' ', 'T')
+                .slice(0, 16)
+            : '';
+
+        form.elements.endDate.value =
+          tournament.end_date
+            ? tournament.end_date
+                .replace(' ', 'T')
+                .slice(0, 16)
+            : '';
+
+        form.elements.liveUrl.value =
+          tournament.live_url || '';
+
+        form.elements.liveStatus.value =
+          tournament.live_status
+            ? '1'
+            : '0';
+
+        window.scrollTo({
+          top:
+            form.offsetTop - 40,
+          behavior:
+            'smooth'
+        });
+      };
+
+    window.deleteTournament =
+      async id => {
+
+        if (
+          !confirm(
+            'Delete this tournament and all its matches?'
+          )
+        ) {
+          return;
+        }
+
+        try {
+
+          await tournamentApi(
+            `/api/tournaments/${id}`,
+            {
+              method: 'DELETE'
+            }
+          );
+
+          toast(
+            'Tournament deleted.'
+          );
+
+          resetTournamentForm();
+
+          loadTournaments();
+
+        } catch (error) {
+
+          toast(
+            error.message
+          );
+
+        }
+      };
+
+    window.deleteMatch =
+      async id => {
+
+        if (
+          !confirm(
+            'Delete this match?'
+          )
+        ) {
+          return;
+        }
+
+        try {
+
+          await tournamentApi(
+            `/api/tournament-matches/${id}`,
+            {
+              method: 'DELETE'
+            }
+          );
+
+          toast(
+            'Match deleted.'
+          );
+
+          loadTournaments();
+
+        } catch (error) {
+
+          toast(
+            error.message
+          );
+
+        }
+      };
+
+    document.querySelector(
+      '#tournamentForm'
+    ).addEventListener(
+      'submit',
+      async event => {
+
+        event.preventDefault();
+
+        try {
+
+          const form =
+            event.target;
+
+          const data =
+            Object.fromEntries(
+              new FormData(form)
+            );
+
+          const id =
+            data.id;
+
+          delete data.id;
+
+          data.liveStatus =
+            data.liveStatus ===
+            '1';
+
+          await tournamentApi(
+            id
+              ? `/api/tournaments/${id}`
+              : '/api/tournaments',
+            {
+              method:
+                id ? 'PUT' : 'POST',
+              body:
+                JSON.stringify(
+                  data
+                )
+            }
+          );
+
+          toast(
+            id
+              ? 'Tournament updated.'
+              : 'Tournament created.'
+          );
+
+          resetTournamentForm();
+
+          loadTournaments();
+
+        } catch (error) {
+
+          toast(
+            error.message
+          );
+
+        }
+      }
+    );
+
+    document.querySelector(
+      '#cancelTournament'
+    ).addEventListener(
+      'click',
+      resetTournamentForm
+    );
+
+    document.querySelector(
+      '#matchForm'
+    ).addEventListener(
+      'submit',
+      async event => {
+
+        event.preventDefault();
+
+        try {
+
+          const form =
+            event.target;
+
+          const data =
+            Object.fromEntries(
+              new FormData(form
+              )
+            );
+
+          const tournamentId =
+            data.tournamentId;
+
+          delete data.tournamentId;
+
+          await tournamentApi(
+            `/api/tournaments/${tournamentId}/matches`,
+            {
+              method: 'POST',
+              body:
+                JSON.stringify(
+                  data
+                )
+            }
+          );
+
+          toast(
+            'Match added.'
+          );
+
+          form.reset();
+
+          loadTournaments();
+
+        } catch (error) {
+
+          toast(
+            error.message
+          );
+
+        }
+      }
+    );
+
+    loadTournaments();
+  </script>
+</body>
+</html>
