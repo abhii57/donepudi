@@ -5,9 +5,23 @@ import bcrypt from 'bcryptjs';
 import { pool, initializeDatabase } from './db.js';
 
 const app = express();
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
 const port = process.env.PORT || 3000;
 const secret = process.env.JWT_SECRET || 'development-only-change-me';
-app.use(express.json({ limit: '8mb' })); app.use(express.static('public'));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.static('public'));
 const tokenFor = u => jwt.sign({ id: u.id, name: u.name, role: u.role }, secret, { expiresIn: '7d' });
 function optionalAuth(req, _res, next) { const t = req.headers.authorization?.split(' ')[1]; if (t) try { req.user = jwt.verify(t, secret); } catch {} next(); }
 function requireAuth(req, res, next) { optionalAuth(req,res,()=> req.user ? next() : res.status(401).json({error:'Please sign in first.'})); }
