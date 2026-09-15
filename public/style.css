@@ -155,3 +155,444 @@ body {
 .help-section {
   display: none !important;
 }
+
+/* ===== DONEPUDI HIGHLIGHTS MOBILE/EDITORIAL REDESIGN ===== */
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 0;
+}
+
+nav {
+  min-width: 0;
+}
+
+#account {
+  min-width: 0;
+  max-width: 52%;
+  overflow: hidden;
+}
+
+.highlights-section {
+  margin-top: 28px;
+}
+
+.highlights-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.highlights-head h1 {
+  font: 700 46px/1 'Playfair Display';
+  letter-spacing: -.045em;
+  margin: 0;
+}
+
+.highlight-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #69736e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.highlight-controls button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fffdfa;
+  color: var(--ink);
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.highlight-card {
+  position: relative;
+  min-height: 460px;
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #c2ddd0;
+  box-shadow: 0 12px 35px #14231d16;
+}
+
+.highlight-image {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transition: background-image .35s ease;
+}
+
+.highlight-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #071b18d9 0%, #071b1890 42%, #071b1820 75%, #071b1808 100%);
+}
+
+.highlight-copy {
+  position: absolute;
+  z-index: 2;
+  left: 38px;
+  right: 120px;
+  bottom: 42px;
+  color: white;
+  max-width: 680px;
+}
+
+.highlight-category {
+  display: inline-block;
+  padding: 8px 15px;
+  border-radius: 999px;
+  background: #e5f0ecdd;
+  color: #365a52;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.highlight-copy h2 {
+  font: 700 clamp(34px, 5vw, 58px)/1.02 'Playfair Display';
+  letter-spacing: -.045em;
+  margin: 17px 0 12px;
+}
+
+.highlight-copy p {
+  max-width: 600px;
+  margin: 0 0 15px;
+  color: #f5f0e7;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.highlight-meta {
+  color: #eee9df;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.highlight-arrow {
+  position: absolute;
+  z-index: 3;
+  right: 30px;
+  bottom: 30px;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--coral);
+  color: white;
+  font-size: 31px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px #ef6a5345;
+}
+
+.highlight-dots {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin: 18px 0 5px;
+}
+
+.highlight-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #d7d7d1;
+  cursor: pointer;
+}
+
+.highlight-dots button.active {
+  background: var(--coral);
+  transform: scale(1.2);
+}
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .ticker {
+    width: 100%;
+    height: 38px;
+    padding: 0 8px;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 11px;
+  }
+
+  .ticker div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  nav {
+    width: 100%;
+    height: 72px;
+    padding: 0 12px;
+    gap: 10px;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+    order: -1;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    font-size: 29px;
+  }
+
+  .brand {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: clamp(24px, 7vw, 31px);
+    white-space: nowrap;
+  }
+
+  #account {
+    margin-left: auto;
+    flex: 0 1 auto;
+    max-width: 42%;
+    overflow: hidden;
+  }
+
+  #account > * {
+    max-width: 100%;
+  }
+
+  main {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px 12px 92px;
+    margin: 0;
+  }
+
+  .highlights-section {
+    margin-top: 12px;
+  }
+
+  .highlights-head {
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .highlights-head h1 {
+    font-size: 36px;
+  }
+
+  .highlight-controls {
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .highlight-controls button {
+    width: 35px;
+    height: 35px;
+    font-size: 23px;
+  }
+
+  .highlight-card {
+    min-height: 455px;
+    height: min(118vw, 500px);
+    border-radius: 20px;
+  }
+
+  .highlight-overlay {
+    background: linear-gradient(0deg, #071b18e8 0%, #071b18a8 42%, #071b1820 78%, #071b1800 100%);
+  }
+
+  .highlight-copy {
+    left: 20px;
+    right: 20px;
+    bottom: 27px;
+  }
+
+  .highlight-category {
+    padding: 7px 12px;
+    font-size: 10px;
+  }
+
+  .highlight-copy h2 {
+    font-size: clamp(29px, 8vw, 40px);
+    margin: 12px 0 9px;
+  }
+
+  .highlight-copy p {
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .highlight-arrow {
+    right: 18px;
+    bottom: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 27px;
+  }
+
+  .highlight-dots {
+    margin: 13px 0 0;
+  }
+
+  /* Latest Stories becomes a clean mobile editorial feed */
+  #feed {
+    margin-top: 40px;
+    margin-bottom: 17px;
+  }
+
+  #feed .section-head {
+    margin: 0;
+    gap: 10px;
+  }
+
+  #feed .section-head h2 {
+    font-size: 34px;
+  }
+
+  #feed .filters {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  #feed .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  #feedGrid,
+  .feed-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 16px !important;
+  }
+
+  #feedGrid > *,
+  .feed-grid > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .story {
+    width: 100% !important;
+    border-radius: 17px;
+  }
+
+  .story .cover {
+    width: 100%;
+    height: 215px;
+    object-fit: cover;
+  }
+
+  .story-content {
+    padding: 15px 16px 14px;
+  }
+
+  .story h3 {
+    font-size: 22px;
+  }
+
+  /* Bottom navigation matches the reference mobile layout */
+  .mobile-bottom-nav {
+    position: fixed;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    height: 70px;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+    background: #fffdfaee;
+    backdrop-filter: blur(14px);
+    border-top: 1px solid #e6e1da;
+  }
+
+  .mobile-bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .mobile-bottom-nav span {
+    font-size: 25px;
+    line-height: 1;
+  }
+
+  .mobile-bottom-nav small {
+    font-size: 11px;
+  }
+
+  .mobile-bottom-nav a.active {
+    color: var(--coral);
+  }
+
+  .member-section {
+    margin-top: 50px;
+  }
+
+  .village-map {
+    width: 100%;
+    grid-template-columns: 1fr !important;
+    padding: 18px !important;
+    margin-top: 45px;
+  }
+
+  .village-map iframe {
+    width: 100%;
+    min-height: 250px;
+  }
+
+  dialog {
+    width: calc(100% - 24px);
+    max-width: 100%;
+    margin: 12px auto;
+  }
+
+  input, textarea, select, button {
+    max-width: 100%;
+  }
+}
+
+/* Help/Helpline stays completely out of the UI */
+#helpline,
+.help-section,
+.navlinks a[href="help.html"],
+.mobile-menu a[href="help.html"] {
+  display: none !important;
+}

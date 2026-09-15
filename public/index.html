@@ -39,7 +39,34 @@
     </div>
   </div>
   <main>
-    <section class="hero"><div><p class="eyebrow">THE DAILY BRIEFING · AUGUST 25</p><h1>Make sense of<br><i>what matters.</i></h1><p class="sub">Independent reporting, fresh perspectives, and the conversations that move us forward.</p><button class="primary" onclick="document.querySelector('#feed').scrollIntoView({behavior:'smooth'})">Explore today's feed <b>→</b></button></div><div class="hero-art"><div class="orb"></div><p>BE CURIOUS.<br>STAY CONNECTED.</p></div></section>
+    <section class="highlights-section" aria-labelledby="highlights-title">
+      <div class="highlights-head">
+        <div>
+          <p class="eyebrow">FEATURED · TODAY</p>
+          <h1 id="highlights-title">Highlights</h1>
+        </div>
+        <div class="highlight-controls">
+          <span id="highlightCounter">1 / 1</span>
+          <button type="button" id="highlightPrev" aria-label="Previous highlight">‹</button>
+          <button type="button" id="highlightNext" aria-label="Next highlight">›</button>
+        </div>
+      </div>
+
+      <article class="highlight-card" id="highlightCard">
+        <div class="highlight-image" id="highlightImage"></div>
+        <div class="highlight-overlay"></div>
+        <div class="highlight-copy">
+          <span class="highlight-category" id="highlightCategory">COMMUNITY</span>
+          <h2 id="highlightTitle">Loading highlights...</h2>
+          <p id="highlightExcerpt">Loading the latest stories.</p>
+          <div class="highlight-meta" id="highlightMeta"></div>
+        </div>
+        <button type="button" class="highlight-arrow" id="highlightOpen" aria-label="Open highlighted story">→</button>
+      </article>
+
+      <div class="highlight-dots" id="highlightDots" aria-label="Highlight position"></div>
+    </section>
+
     <section class="section-head" id="feed"><div><p class="eyebrow">ON THE PULSE</p><h2>Latest stories</h2></div><div class="filters"><button class="active">All</button><button>Economy</button><button>Cities</button><button>Wellness</button></div></section>
     <div id="feedGrid" class="feed-grid"><p class="loading">Loading the latest...</p></div>
     <section class="member-section" id="members" aria-labelledby="members-title"><div class="section-head"><div><p class="eyebrow">OUR COMMUNITY</p><h2 id="members-title">Members</h2></div></div><div id="memberGrid" class="member-grid"><p class="loading">Loading members...</p></div></section>
@@ -56,6 +83,13 @@
       </div>
       <iframe title="Satellite map of Donepudi village, 522324" src="https://www.google.com/maps?q=16.1815016%2C80.8016821&amp;t=k&amp;z=17&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </section>
+    <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+      <a class="active" href="index.html"><span>⌂</span><small>Home</small></a>
+      <a href="news.html"><span>▣</span><small>News</small></a>
+      <a href="members.html"><span>♙</span><small>Members</small></a>
+      <a href="map.html"><span>⌖</span><small>Map</small></a>
+    </nav>
+
   </main>
   <dialog id="authModal"><button class="close" onclick="authModal.close()">×</button><div id="authContent"></div></dialog>
   <dialog id="postModal"><button class="close" onclick="postModal.close()">×</button><form id="postForm"><input name="id" type="hidden"><p class="eyebrow">EDITOR DESK</p><h2 id="postModalTitle">Publish a story</h2><input name="title" placeholder="Headline" required><textarea name="excerpt" placeholder="Short summary" required></textarea><input name="category" placeholder="Category (e.g. Technology)"><label class="check">Upload cover image <input name="imageFile" type="file" accept="image/*"></label><input name="imageUrl" type="url" placeholder="Or paste a cover image URL (optional)"><label class="check"><input name="isBreaking" type="checkbox"> Mark as breaking news</label><button class="primary" id="postSubmitLabel">Publish story →</button></form></dialog>
@@ -63,5 +97,142 @@
   <dialog id="memberModal"><button class="close" onclick="memberModal.close()">×</button><form id="memberForm"><p class="eyebrow">MEMBER DIRECTORY</p><h2>Add a member</h2><input name="name" placeholder="Member name" required><label class="check">Upload photo <input name="photoFile" type="file" accept="image/*"></label><input name="photoUrl" type="url" placeholder="Or paste a photo URL"><textarea name="note" placeholder="Member note" required></textarea><button class="primary">Add member →</button></form></dialog>
   <div id="toast"></div>
   <script src="app.js"></script>
+
+  <script>
+    (() => {
+      const state = { items: [], index: 0, timer: null };
+
+      const els = {
+        card: document.getElementById('highlightCard'),
+        image: document.getElementById('highlightImage'),
+        category: document.getElementById('highlightCategory'),
+        title: document.getElementById('highlightTitle'),
+        excerpt: document.getElementById('highlightExcerpt'),
+        meta: document.getElementById('highlightMeta'),
+        counter: document.getElementById('highlightCounter'),
+        dots: document.getElementById('highlightDots'),
+        prev: document.getElementById('highlightPrev'),
+        next: document.getElementById('highlightNext'),
+        open: document.getElementById('highlightOpen')
+      };
+
+      function articleImage(item) {
+        return item.image_url || item.imageUrl || item.cover || item.image || '';
+      }
+
+      function articleDate(item) {
+        const raw = item.created_at || item.createdAt || item.date;
+        if (!raw) return '';
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('en-IN', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      }
+
+      function normalise(data) {
+        const list = Array.isArray(data)
+          ? data
+          : (data?.articles || data?.news || data?.data || []);
+        return list
+          .filter(Boolean)
+          .sort((a, b) => {
+            const da = new Date(a.created_at || a.createdAt || a.date || 0).getTime();
+            const db = new Date(b.created_at || b.createdAt || b.date || 0).getTime();
+            return db - da;
+          })
+          .slice(0, 8);
+      }
+
+      function render() {
+        const items = state.items;
+        if (!items.length) {
+          els.title.textContent = 'No highlights yet';
+          els.excerpt.textContent = 'Publish a story from the editor desk to create highlights.';
+          els.counter.textContent = '0 / 0';
+          els.dots.innerHTML = '';
+          els.card.classList.add('empty');
+          return;
+        }
+
+        const item = items[state.index];
+        const image = articleImage(item);
+        const category = String(item.category || 'COMMUNITY').toUpperCase();
+        const title = item.title || 'Untitled story';
+        const excerpt = item.excerpt || item.summary || 'Read the latest story from Donepudi.';
+        const date = articleDate(item);
+        const breaking = item.is_breaking || item.isBreaking;
+
+        els.card.classList.remove('empty');
+        els.image.style.backgroundImage = image
+          ? `url("${String(image).replace(/"/g, '\\"')}")`
+          : 'linear-gradient(135deg,#c2ddd0,#ef6a53)';
+        els.category.textContent = breaking ? 'BREAKING' : category;
+        els.title.textContent = title;
+        els.excerpt.textContent = excerpt;
+        els.meta.textContent = `${date ? date + ' · ' : ''}Donepudi News`;
+        els.counter.textContent = `${state.index + 1} / ${items.length}`;
+
+        els.dots.innerHTML = items.map((_, i) =>
+          `<button type="button" class="${i === state.index ? 'active' : ''}" aria-label="Highlight ${i + 1}" data-index="${i}"></button>`
+        ).join('');
+
+        els.dots.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.index = Number(btn.dataset.index);
+            render();
+            restart();
+          });
+        });
+
+        const id = item.id;
+        els.open.onclick = () => {
+          if (id) {
+            window.location.href = `news.html#story-${encodeURIComponent(id)}`;
+          } else {
+            document.querySelector('#feed')?.scrollIntoView({ behavior: 'smooth' });
+          }
+        };
+      }
+
+      function next() {
+        if (!state.items.length) return;
+        state.index = (state.index + 1) % state.items.length;
+        render();
+      }
+
+      function prev() {
+        if (!state.items.length) return;
+        state.index = (state.index - 1 + state.items.length) % state.items.length;
+        render();
+      }
+
+      function restart() {
+        clearInterval(state.timer);
+        if (state.items.length > 1) {
+          state.timer = setInterval(next, 5000);
+        }
+      }
+
+      els.next.addEventListener('click', () => { next(); restart(); });
+      els.prev.addEventListener('click', () => { prev(); restart(); });
+
+      fetch('/api/news', { headers: { Accept: 'application/json' } })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('Unable to load news')))
+        .then(data => {
+          state.items = normalise(data);
+          state.index = 0;
+          render();
+          restart();
+        })
+        .catch(() => {
+          state.items = [];
+          render();
+        });
+    })();
+  </script>
+
 </body>
 </html>
