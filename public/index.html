@@ -18,10 +18,28 @@
   <nav>
     <a class="brand" href="#">Done<span>pudi</span></a>
     <div class="navlinks">
-      <a href="news.html">Top stories</a><a href="members.html">Members</a><a href="help.html">Helpline</a><a href="map.html">Map</a><a href="about.html">About</a><a href="admin.html">Admin login</a>
+      <a href="news.html">Top stories</a>
+      <a href="members.html">Members</a>
+      <a href="help.html">Helpline</a>
+      <a href="map.html">Map</a>
+      <a href="about.html">About</a>
+      <a href="admin.html">Admin login</a>
     </div>
     <div id="account"></div>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Open menu" aria-expanded="false">☰</button>
   </nav>
+  <div id="mobileMenu" class="mobile-menu">
+    <a href="news.html" onclick="closeMobileMenu()">Top stories</a>
+    <a href="members.html" onclick="closeMobileMenu()">Members</a>
+    <a href="help.html" onclick="closeMobileMenu()">Helpline</a>
+    <a href="map.html" onclick="closeMobileMenu()">Map</a>
+    <a href="about.html" onclick="closeMobileMenu()">About</a>
+    <a href="admin.html" onclick="closeMobileMenu()">Admin login</a>
+    <div class="mobile-auth">
+      <button class="ghost" onclick="openAuth('login');closeMobileMenu()">Log in</button>
+      <button class="primary" onclick="openAuth('signup');closeMobileMenu()">Sign up</button>
+    </div>
+  </div>
   <main>
     <section class="hero"><div><p class="eyebrow">THE DAILY BRIEFING · AUGUST 25</p><h1>Make sense of<br><i>what matters.</i></h1><p class="sub">Independent reporting, fresh perspectives, and the conversations that move us forward.</p><button class="primary" onclick="document.querySelector('#feed').scrollIntoView({behavior:'smooth'})">Explore today's feed <b>→</b></button></div><div class="hero-art"><div class="orb"></div><p>BE CURIOUS.<br>STAY CONNECTED.</p></div></section>
     <section class="section-head" id="feed"><div><p class="eyebrow">ON THE PULSE</p><h2>Latest stories</h2></div><div class="filters"><button class="active">All</button><button>Economy</button><button>Cities</button><button>Wellness</button></div></section>
