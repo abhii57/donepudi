@@ -4,20 +4,17 @@ import { dirname, join } from 'node:path';
 import bcrypt from 'bcryptjs';
 
 const databaseFile = join(process.cwd(), 'data', 'pulsewire.sqlite');
-
 let database;
 
 function persist() {
   mkdirSync(dirname(databaseFile), { recursive: true });
-  writeFileSync(
-    databaseFile,
-    Buffer.from(database.export())
-  );
+  writeFileSync(databaseFile, Buffer.from(database.export()));
 }
 
 export const pool = {
   async query(sql, params = []) {
     const statement = sql.replace(/NOW\(\)/g, 'CURRENT_TIMESTAMP');
+
     const isRead =
       /^\s*(SELECT|WITH)/i.test(statement) ||
       /\sRETURNING\s/i.test(statement);
@@ -48,7 +45,6 @@ export const pool = {
     }
 
     database.run(statement, params);
-
     const rowCount = database.getRowsModified();
 
     persist();
@@ -74,6 +70,8 @@ export async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
+      mobile TEXT UNIQUE,
+      mobile_verified INTEGER NOT NULL DEFAULT 0,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'reader',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -124,12 +122,27 @@ export async function initializeDatabase() {
   `);
 
   /*
+   * DATABASE MIGRATION
+   *
+   * Existing Donepudi databases may already have a users table
+   * without the new mobile fields.
+   */
+  try {
+    database.run('ALTER TABLE users ADD COLUMN mobile TEXT');
+  } catch {}
+
+  try {
+    database.run(
+      'ALTER TABLE users ADD COLUMN mobile_verified INTEGER NOT NULL DEFAULT 0'
+    );
+  } catch {}
+
+  /*
    * ADMIN ACCOUNT
    *
    * The admin email and password are NOT stored in this source code.
    * They must be supplied through environment variables.
    */
-
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -141,9 +154,9 @@ export async function initializeDatabase() {
 
   /*
    * Find the existing admin account by role.
-   * This allows us to replace the old demo admin account.
+   * This preserves the existing admin user while updating
+   * the credentials from Render environment variables.
    */
-
   const { rows: [admin] } = await pool.query(
     "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
   );
