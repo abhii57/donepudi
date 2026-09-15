@@ -522,7 +522,16 @@ async function initializeMSG91() {
  * RESET OTP STATE
  */
 function resetOTPState() {
-  state.otp = {
+    state.otp = {
+  initialized: false,
+  requested: false,
+  verified: false,
+  accessToken: '',
+  mobile: '',
+  reqId: '',
+  loading: false
+};
+state.otp = {
     initialized:
       state.otp.initialized,
 
