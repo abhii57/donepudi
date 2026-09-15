@@ -17,6 +17,7 @@ const state = {
     verified: false,
     accessToken: '',
     mobile: '',
+    reqId: '',
     loading: false
   }
 };
@@ -83,6 +84,7 @@ function updateAccount() {
   if (!state.user) {
     account.innerHTML = `
       <div class="account-actions">
+
         <button
           class="ghost"
           onclick="openAuth('login')">
@@ -94,6 +96,7 @@ function updateAccount() {
           onclick="openAuth('signup')">
           Join Donepudi
         </button>
+
       </div>
     `;
 
@@ -145,6 +148,7 @@ function updateAccount() {
     <div class="account-actions">
 
       <div class="user-chip">
+
         <span class="avatar">
           ${state.user.name[0].toUpperCase()}
         </span>
@@ -152,6 +156,7 @@ function updateAccount() {
         ${escapeHtml(
           state.user.name.split(' ')[0]
         )}
+
       </div>
 
       ${adminTools}
@@ -185,6 +190,7 @@ function story(article) {
     state.user?.role === 'admin'
       ? `
         <div class="admin-actions">
+
           <button
             onclick="editStory(${article.id})">
             Edit
@@ -195,6 +201,7 @@ function story(article) {
             onclick="deleteStory(${article.id})">
             Delete
           </button>
+
         </div>
       `
       : '';
@@ -214,10 +221,13 @@ function story(article) {
       <div class="story-content">
 
         <div class="meta">
+
           ${escapeHtml(
             article.category.toUpperCase()
           )}
+
           ·
+
           ${date}
 
           ${
@@ -229,6 +239,7 @@ function story(article) {
               `
               : ''
           }
+
         </div>
 
         <h3>
@@ -382,6 +393,7 @@ async function loadMembers() {
 function loadMSG91Widget() {
   return new Promise(
     (resolve, reject) => {
+
       if (
         typeof window.initSendOTP ===
         'function'
@@ -396,8 +408,10 @@ function loadMSG91Widget() {
         );
 
       if (existing) {
+
         const timer =
           setInterval(() => {
+
             if (
               typeof window.initSendOTP ===
               'function'
@@ -405,15 +419,18 @@ function loadMSG91Widget() {
               clearInterval(timer);
               resolve();
             }
+
           }, 100);
 
         setTimeout(() => {
           clearInterval(timer);
+
           reject(
             new Error(
               'MSG91 widget could not be loaded.'
             )
           );
+
         }, 10000);
 
         return;
@@ -433,6 +450,7 @@ function loadMSG91Widget() {
         'true';
 
       script.onload = () => {
+
         if (
           typeof window.initSendOTP ===
           'function'
@@ -445,6 +463,7 @@ function loadMSG91Widget() {
             )
           );
         }
+
       };
 
       script.onerror = () => {
@@ -466,6 +485,7 @@ function loadMSG91Widget() {
  * INITIALIZE MSG91
  */
 async function initializeMSG91() {
+
   if (
     state.otp.initialized
   ) {
@@ -485,6 +505,7 @@ async function initializeMSG91() {
   await loadMSG91Widget();
 
   const configuration = {
+
     widgetId:
       MSG91_WIDGET_ID,
 
@@ -508,6 +529,7 @@ async function initializeMSG91() {
         error
       );
     }
+
   };
 
   window.initSendOTP(
@@ -522,29 +544,17 @@ async function initializeMSG91() {
  * RESET OTP STATE
  */
 function resetOTPState() {
-    state.otp = {
-  initialized: false,
-  requested: false,
-  verified: false,
-  accessToken: '',
-  mobile: '',
-  reqId: '',
-  loading: false
-};
-state.otp = {
-    initialized:
-      state.otp.initialized,
 
+  state.otp = {
+    initialized: false,
     requested: false,
-
     verified: false,
-
     accessToken: '',
-
     mobile: '',
-
+    reqId: '',
     loading: false
   };
+
 }
 
 /*
@@ -554,6 +564,7 @@ function openAuth(
   mode,
   isAdmin = false
 ) {
+
   const modal =
     $('#authModal');
 
@@ -570,10 +581,12 @@ function openAuth(
 }
 
 function openAdminLogin() {
+
   openAuth(
     'login',
     true
   );
+
 }
 
 /*
@@ -583,12 +596,14 @@ function renderAuth(
   mode,
   isAdmin = false
 ) {
+
   const auth =
     $('#authContent');
 
   if (!auth) return;
 
   if (mode === 'signup') {
+
     auth.innerHTML = `
       <div class="auth-tabs">
 
@@ -764,6 +779,14 @@ function renderAuth(
         }
       </h2>
 
+      <p class="demo">
+        ${
+          isAdmin
+            ? 'Admin access includes publishing news.'
+            : 'Log in with your Donepudi account.'
+        }
+      </p>
+
       <input
         name="email"
         type="email"
@@ -794,6 +817,7 @@ function renderAuth(
 function normalizeMobile(
   value
 ) {
+
   const digits =
     String(value || '')
       .replace(/\D/g, '');
@@ -818,6 +842,7 @@ function normalizeMobile(
  * SEND OTP
  */
 async function sendSignupOTP() {
+
   if (state.otp.loading) {
     return;
   }
@@ -856,8 +881,34 @@ async function sendSignupOTP() {
     return;
   }
 
+  if (!mobile) {
+    toast(
+      'Enter your mobile number.'
+    );
+    return;
+  }
+
+  if (!password) {
+    toast(
+      'Enter a password.'
+    );
+    return;
+  }
+
+  if (
+    password !==
+    confirmPassword
+  ) {
+    toast(
+      'Passwords do not match.'
+    );
+    return;
+  }
+
   const normalizedMobile =
-    normalizeMobile(mobile);
+    normalizeMobile(
+      mobile
+    );
 
   if (!normalizedMobile) {
     toast(
@@ -866,69 +917,65 @@ async function sendSignupOTP() {
     return;
   }
 
-  if (
-    password.length < 6
-  ) {
-    toast(
-      'Password must be at least 6 characters.'
-    );
-    return;
-  }
-
-  if (
-    password !== confirmPassword
-  ) {
-    toast(
-      'Passwords do not match.'
-    );
-    return;
-  }
-
   state.otp.loading =
     true;
 
-  const button =
+  const sendButton =
     $('#sendOtpButton');
 
-  if (button) {
-    button.disabled = true;
-    button.textContent =
-      'Sending...';
+  if (sendButton) {
+    sendButton.disabled =
+      true;
+
+    sendButton.textContent =
+      'Checking...';
   }
 
   try {
-    /*
-     * First make sure the email/mobile
-     * aren't already registered.
-     */
-    await api(
-      '/api/auth/check-signup',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          name,
-          email,
-          mobile,
-          password,
-          confirmPassword
-        })
-      }
-    );
+
+    const check =
+      await api(
+        '/api/auth/check-signup',
+        {
+          method: 'POST',
+          body:
+            JSON.stringify({
+              email,
+              mobile:
+                normalizedMobile
+            })
+        }
+      );
+
+    if (
+      check.exists ||
+      check.emailExists ||
+      check.mobileExists
+    ) {
+
+      throw new Error(
+        check.error ||
+        'An account with this email or mobile already exists.'
+      );
+
+    }
 
     await initializeMSG91();
 
-    /*
-     * MSG91 requires country code
-     * without the + sign.
-     */
+    state.otp.mobile =
+      normalizedMobile;
+
     window.sendOtp(
       normalizedMobile,
 
       data => {
-        console.log(
-          'OTP sent:',
-          data
-        );
+
+        const reqId =
+          data?.reqId ||
+          data?.['reqId'] ||
+          data?.data?.reqId ||
+          data?.data?.['reqId'] ||
+          '';
 
         state.otp.requested =
           true;
@@ -938,6 +985,9 @@ async function sendSignupOTP() {
 
         state.otp.mobile =
           normalizedMobile;
+
+        state.otp.reqId =
+          reqId;
 
         const section =
           $('#otpSection');
@@ -958,34 +1008,46 @@ async function sendSignupOTP() {
         toast(
           'OTP sent successfully.'
         );
+
       },
 
       error => {
+
         console.error(
-          'OTP send error:',
+          'MSG91 send OTP error:',
           error
         );
 
         toast(
-          'Unable to send OTP. Please try again.'
+          error?.message ||
+          error?.error ||
+          'Unable to send OTP.'
         );
+
       }
     );
+
   } catch (error) {
+
     toast(
       error.message
     );
+
   } finally {
+
     state.otp.loading =
       false;
 
-    if (button) {
-      button.disabled =
+    if (sendButton) {
+
+      sendButton.disabled =
         false;
 
-      button.textContent =
+      sendButton.textContent =
         'Send OTP';
+
     }
+
   }
 }
 
@@ -993,6 +1055,7 @@ async function sendSignupOTP() {
  * VERIFY OTP
  */
 async function verifySignupOTP() {
+
   const otpInput =
     $('#signupOtp');
 
@@ -1001,17 +1064,23 @@ async function verifySignupOTP() {
   const otp =
     otpInput.value.trim();
 
-  if (!state.otp.requested) {
+  if (!otp) {
+
     toast(
-      'Please send the OTP first.'
+      'Enter the OTP.'
     );
+
     return;
   }
 
-  if (!/^\d{4,8}$/.test(otp)) {
+  if (
+    !state.otp.requested
+  ) {
+
     toast(
-      'Enter the OTP you received.'
+      'Please send the OTP first.'
     );
+
     return;
   }
 
@@ -1019,311 +1088,232 @@ async function verifySignupOTP() {
     $('#verifyOtpButton');
 
   if (button) {
-    button.disabled = true;
+    button.disabled =
+      true;
+
     button.textContent =
       'Verifying...';
   }
 
-  window.verifyOtp(
-    otp,
+  try {
 
-    data => {
-      console.log(
-        'OTP verified:',
-        data
-      );
+    window.verifyOtp(
+      otp,
 
-      const accessToken =
-        data?.['access-token'] ||
-        data?.accessToken ||
-        data?.token ||
-        data?.data?.['access-token'] ||
-        data?.data?.accessToken ||
-        '';
+      data => {
 
-      if (!accessToken) {
-        console.error(
-          'MSG91 response:',
+        console.log(
+          'OTP verified:',
           data
         );
 
-        toast(
-          'OTP verified, but no verification token was returned.'
-        );
+        const accessToken =
+          data?.accessToken ||
+          data?.['access-token'] ||
+          data?.token ||
+          data?.data?.accessToken ||
+          data?.data?.['access-token'] ||
+          data?.data?.token ||
+          '';
 
-        if (button) {
-          button.disabled =
-            false;
-          button.textContent =
-            'Verify OTP';
+        state.otp.verified =
+          true;
+
+        state.otp.accessToken =
+          accessToken;
+
+        const status =
+          $('#otpStatus');
+
+        if (status) {
+          status.textContent =
+            'Mobile number verified successfully.';
         }
 
-        return;
-      }
+        toast(
+          'Mobile number verified.'
+        );
 
-      state.otp.verified =
-        true;
+      },
 
-      state.otp.accessToken =
-        accessToken;
+      error => {
 
-      const status =
-        $('#otpStatus');
+        console.error(
+          'OTP verification error:',
+          error
+        );
 
-      if (status) {
-        status.textContent =
-          '✓ Mobile number verified successfully.';
-      }
+        toast(
+          error?.message ||
+          error?.error ||
+          'Invalid OTP.'
+        );
 
-      if (otpInput) {
-        otpInput.disabled =
-          true;
-      }
+      },
 
-      if (button) {
-        button.disabled =
-          true;
-        button.textContent =
-          '✓ Verified';
-      }
+      state.otp.reqId
+    );
 
-      const sendButton =
-        $('#sendOtpButton');
+  } catch (error) {
 
-      if (sendButton) {
-        sendButton.disabled =
-          true;
-        sendButton.textContent =
-          '✓ Mobile verified';
-      }
+    toast(
+      error.message
+    );
 
-      toast(
-        'Mobile number verified.'
-      );
-    },
+  } finally {
 
-    error => {
-      console.error(
-        'OTP verification error:',
-        error
-      );
+    if (button) {
 
-      toast(
-        'Invalid or expired OTP.'
-      );
+      button.disabled =
+        false;
 
-      if (button) {
-        button.disabled =
-          false;
-        button.textContent =
-          'Verify OTP';
-      }
+      button.textContent =
+        'Verify OTP';
+
     }
-  );
+
+  }
 }
 
 /*
  * RESEND OTP
  */
 async function resendSignupOTP() {
+
   if (
     !state.otp.requested ||
     !state.otp.mobile
   ) {
+
     toast(
-      'Please send an OTP first.'
+      'Please send the OTP first.'
     );
+
     return;
   }
 
-  const button =
-    $('#resendOtpButton');
-
-  if (button) {
-    button.disabled = true;
-    button.textContent =
-      'Sending...';
-  }
-
   try {
-    await initializeMSG91();
 
     window.retryOtp(
       '11',
 
       data => {
-        console.log(
-          'OTP resent:',
-          data
-        );
+
+        const reqId =
+          data?.reqId ||
+          data?.['reqId'] ||
+          data?.data?.reqId ||
+          data?.data?.['reqId'] ||
+          state.otp.reqId;
+
+        state.otp.reqId =
+          reqId;
+
+        state.otp.verified =
+          false;
 
         toast(
-          'A new OTP has been sent.'
+          'OTP resent successfully.'
         );
+
       },
 
       error => {
+
         console.error(
           'OTP resend error:',
           error
         );
 
         toast(
+          error?.message ||
+          error?.error ||
           'Unable to resend OTP.'
         );
-      }
+
+      },
+
+      state.otp.reqId
     );
+
   } catch (error) {
+
     toast(
       error.message
     );
-  } finally {
-    setTimeout(() => {
-      if (button) {
-        button.disabled =
-          false;
-        button.textContent =
-          'Resend OTP';
-      }
-    }, 30000);
+
   }
 }
 
 /*
- * SIGNUP SUBMIT
+ * SIGNUP
  */
-async function submitSignup(event) {
+async function submitSignup(
+  event
+) {
+
   event.preventDefault();
 
   const form =
     event.target;
 
-  if (!state.otp.verified) {
-    toast(
-      'Please verify your mobile number first.'
-    );
-    return;
-  }
-
-  if (!state.otp.accessToken) {
-    toast(
-      'Mobile verification is incomplete.'
-    );
-    return;
-  }
-
-  const button =
-    $('#signupButton');
-
-  if (button) {
-    button.disabled =
-      true;
-
-    button.textContent =
-      'Creating account...';
-  }
-
   try {
-    const data = {
-      name:
-        form.elements.name.value.trim(),
 
-      email:
-        form.elements.email.value.trim(),
+    if (
+      !state.otp.verified
+    ) {
 
-      mobile:
-        form.elements.mobile.value.trim(),
+      toast(
+        'Please verify your mobile number first.'
+      );
 
-      password:
-        form.elements.password.value,
+      return;
+    }
 
-      confirmPassword:
-        form.elements.confirmPassword.value,
+    if (
+      !state.otp.accessToken
+    ) {
 
-      otpAccessToken:
-        state.otp.accessToken
-    };
+      toast(
+        'OTP verification token is missing. Please verify again.'
+      );
+
+      return;
+    }
+
+    const data =
+      Object.fromEntries(
+        new FormData(
+          form
+        )
+      );
+
+    delete data.confirmPassword;
+
+    delete data.mobile;
+
+    data.mobile =
+      state.otp.mobile;
+
+    data.otpAccessToken =
+      state.otp.accessToken;
+
+    const button =
+      $('#signupButton');
+
+    if (button) {
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        'Creating account...';
+
+    }
 
     const response =
       await api(
         '/api/auth/signup',
-        {
-          method: 'POST',
-          body:
-            JSON.stringify(data)
-        }
-      );
-
-    state.token =
-      response.token;
-
-    state.user =
-      response.user;
-
-    localStorage.token =
-      response.token;
-
-    localStorage.user =
-      JSON.stringify(
-        response.user
-      );
-
-    resetOTPState();
-
-    authModal.close();
-
-if (response.user.role === 'admin') {
-  window.location.href = 'admin.html';
-  return;
-}
-
-updateAccount();
-load();
-
-toast(
-  `Welcome, ${
-    response.user.name
-      .split(' ')[0]
-  }!`
-);
-  } catch (error) {
-    toast(
-      error.message
-    );
-  } finally {
-    if (button) {
-      button.disabled =
-        false;
-
-      button.textContent =
-        'Create account →';
-    }
-  }
-}
-
-/*
- * NORMAL LOGIN
- */
-async function submitAuth(
-  event,
-  mode
-) {
-  event.preventDefault();
-
-  try {
-    const data =
-      Object.fromEntries(
-        new FormData(
-          event.target
-        )
-      );
-
-    const response =
-      await api(
-        '/api/auth/' +
-          (mode === 'login'
-            ? 'login'
-            : 'signup'),
         {
           method: 'POST',
           body:
@@ -1357,10 +1347,124 @@ async function submitAuth(
           .split(' ')[0]
       }!`
     );
+
   } catch (error) {
+
     toast(
       error.message
     );
+
+  } finally {
+
+    const button =
+      $('#signupButton');
+
+    if (button) {
+
+      button.disabled =
+        false;
+
+      button.textContent =
+        'Create account →';
+
+    }
+
+  }
+}
+
+/*
+ * NORMAL LOGIN
+ */
+async function submitAuth(
+  event,
+  mode
+) {
+
+  event.preventDefault();
+
+  try {
+
+    const data =
+      Object.fromEntries(
+        new FormData(
+          event.target
+        )
+      );
+
+    const response =
+      await api(
+        '/api/auth/' +
+          (
+            mode === 'login'
+              ? 'login'
+              : 'signup'
+          ),
+        {
+          method: 'POST',
+          body:
+            JSON.stringify(
+              data
+            )
+        }
+      );
+
+    state.token =
+      response.token;
+
+    state.user =
+      response.user;
+
+    localStorage.token =
+      response.token;
+
+    localStorage.user =
+      JSON.stringify(
+        response.user
+      );
+
+    authModal.close();
+
+    /*
+     * ADMIN LOGIN FIX
+     *
+     * The server returns role: "admin".
+     * Keep the admin logged in and return
+     * to the main page where the admin
+     * publishing controls are rendered.
+     */
+    if (
+      response.user &&
+      response.user.role === 'admin'
+    ) {
+
+      updateAccount();
+
+      load();
+
+      toast(
+        'Administrator access granted.'
+      );
+
+      return;
+    }
+
+    updateAccount();
+
+    load();
+
+    toast(
+      `Welcome, ${
+        response.user.name
+          .split(' ')[0]
+      }!`
+    );
+
+  } catch (error) {
+
+    toast(
+      error.message
+    );
+
   }
 }
 
@@ -1368,9 +1472,11 @@ async function submitAuth(
  * LOGOUT
  */
 function logout() {
+
   localStorage.clear();
 
   state.token = '';
+
   state.user = null;
 
   updateAccount();
@@ -1386,13 +1492,17 @@ function logout() {
  * LIKE
  */
 async function like(id) {
+
   if (!state.user) {
+
     return openAuth(
       'login'
     );
+
   }
 
   try {
+
     await api(
       `/api/articles/${id}/like`,
       {
@@ -1401,10 +1511,13 @@ async function like(id) {
     );
 
     load();
+
   } catch (error) {
+
     toast(
       error.message
     );
+
   }
 }
 
@@ -1415,10 +1528,13 @@ async function comments(
   id,
   title
 ) {
+
   if (!state.user) {
+
     return openAuth(
       'login'
     );
+
   }
 
   const content =
@@ -1429,6 +1545,7 @@ async function comments(
   if (!content) return;
 
   try {
+
     await api(
       `/api/articles/${id}/comments`,
       {
@@ -1445,10 +1562,13 @@ async function comments(
     );
 
     load();
+
   } catch (error) {
+
     toast(
       error.message
     );
+
   }
 }
 
@@ -1458,6 +1578,7 @@ async function comments(
 async function imageData(
   file
 ) {
+
   if (!file) return null;
 
   if (
@@ -1465,22 +1586,27 @@ async function imageData(
       'image/'
     )
   ) {
+
     throw new Error(
       'Choose an image file.'
     );
+
   }
 
   if (
     file.size >
     5 * 1024 * 1024
   ) {
+
     throw new Error(
       'Image must be 5 MB or smaller.'
     );
+
   }
 
   return new Promise(
     (resolve, reject) => {
+
       const reader =
         new FileReader();
 
@@ -1501,6 +1627,7 @@ async function imageData(
       reader.readAsDataURL(
         file
       );
+
     }
   );
 }
@@ -1509,6 +1636,7 @@ async function imageData(
  * MEMBER MODAL
  */
 function openMemberModal() {
+
   const form =
     $('#memberForm');
 
@@ -1520,11 +1648,26 @@ function openMemberModal() {
 }
 
 if ($('#memberForm')) {
+
   $('#memberForm').onsubmit =
     async event => {
+
       event.preventDefault();
 
+      if (
+        state.user?.role !==
+        'admin'
+      ) {
+
+        toast(
+          'Admin access required.'
+        );
+
+        return;
+      }
+
       try {
+
         const form =
           event.target;
 
@@ -1564,23 +1707,31 @@ if ($('#memberForm')) {
         toast(
           'Member added.'
         );
+
       } catch (error) {
+
         toast(
           error.message
         );
+
       }
+
     };
+
 }
 
 /*
  * HELPLINE
  */
 if ($('#helpForm')) {
+
   $('#helpForm').onsubmit =
     async event => {
+
       event.preventDefault();
 
       try {
+
         const form =
           event.target;
 
@@ -1604,18 +1755,36 @@ if ($('#helpForm')) {
         toast(
           'Your help request has been sent.'
         );
+
       } catch (error) {
+
         toast(
           error.message
         );
+
       }
+
     };
+
 }
 
 /*
  * EDIT STORY
  */
 function editStory(id) {
+
+  if (
+    state.user?.role !==
+    'admin'
+  ) {
+
+    toast(
+      'Admin access required.'
+    );
+
+    return;
+  }
+
   const article =
     state.articles.find(
       item =>
@@ -1626,6 +1795,8 @@ function editStory(id) {
 
   const form =
     $('#postForm');
+
+  if (!form) return;
 
   form.reset();
 
@@ -1667,6 +1838,19 @@ function editStory(id) {
  * DELETE STORY
  */
 async function deleteStory(id) {
+
+  if (
+    state.user?.role !==
+    'admin'
+  ) {
+
+    toast(
+      'Admin access required.'
+    );
+
+    return;
+  }
+
   const article =
     state.articles.find(
       item =>
@@ -1683,6 +1867,7 @@ async function deleteStory(id) {
   }
 
   try {
+
     await api(
       `/api/articles/${id}`,
       {
@@ -1695,10 +1880,13 @@ async function deleteStory(id) {
     );
 
     load();
+
   } catch (error) {
+
     toast(
       error.message
     );
+
   }
 }
 
@@ -1723,7 +1911,21 @@ const escapeHtml =
  * ADMIN USERS
  */
 async function showUsers() {
+
+  if (
+    state.user?.role !==
+    'admin'
+  ) {
+
+    toast(
+      'Admin access required.'
+    );
+
+    return;
+  }
+
   try {
+
     const users =
       await api(
         '/api/admin/users'
@@ -1798,22 +2000,47 @@ async function showUsers() {
     `;
 
     userModal.showModal();
+
   } catch (error) {
+
     toast(
       error.message
     );
+
   }
 }
 
 /*
  * POST / EDIT ARTICLE
+ *
+ * FRONTEND ADMIN CHECK
  */
 if ($('#postForm')) {
+
   $('#postForm').onsubmit =
     async event => {
+
       event.preventDefault();
 
+      /*
+       * IMPORTANT:
+       * Only users whose server-issued
+       * role is admin can publish/edit.
+       */
+      if (
+        state.user?.role !==
+        'admin'
+      ) {
+
+        toast(
+          'Only administrators can publish news.'
+        );
+
+        return;
+      }
+
       try {
+
         const form =
           event.target;
 
@@ -1823,6 +2050,7 @@ if ($('#postForm')) {
           );
 
         delete data.imageFile;
+
         delete data.id;
 
         const uploaded =
@@ -1832,12 +2060,16 @@ if ($('#postForm')) {
           );
 
         if (uploaded) {
+
           data.imageUrl =
             uploaded;
+
         } else if (
           !data.imageUrl
         ) {
+
           delete data.imageUrl;
+
         }
 
         data.isBreaking =
@@ -1883,12 +2115,17 @@ if ($('#postForm')) {
             ? 'Story updated.'
             : 'Story published to the feed.'
         );
+
       } catch (error) {
+
         toast(
           error.message
         );
+
       }
+
     };
+
 }
 
 /*
@@ -1899,17 +2136,21 @@ document
     '.filters button'
   )
   .forEach(button => {
+
     button.onclick =
       () => {
+
         const active =
           document.querySelector(
             '.filters .active'
           );
 
         if (active) {
+
           active.classList.remove(
             'active'
           );
+
         }
 
         button.classList.add(
@@ -1934,13 +2175,16 @@ document
               No stories in this section yet.
             </p>
           `;
+
       };
+
   });
 
 /*
  * MOBILE MENU
  */
 function toggleMobileMenu() {
+
   const menu =
     $('#mobileMenu');
 
@@ -1957,14 +2201,18 @@ function toggleMobileMenu() {
     );
 
   if (button) {
+
     button.setAttribute(
       'aria-expanded',
       String(open)
     );
+
   }
+
 }
 
 function closeMobileMenu() {
+
   const menu =
     $('#mobileMenu');
 
@@ -1974,22 +2222,28 @@ function closeMobileMenu() {
     );
 
   if (menu) {
+
     menu.classList.remove(
       'open'
     );
+
   }
 
   if (button) {
+
     button.setAttribute(
       'aria-expanded',
       'false'
     );
+
   }
+
 }
 
 document.addEventListener(
   'click',
   event => {
+
     const menu =
       $('#mobileMenu');
 
@@ -2008,8 +2262,11 @@ document.addEventListener(
       ) &&
       event.target !== button
     ) {
+
       closeMobileMenu();
+
     }
+
   }
 );
 
