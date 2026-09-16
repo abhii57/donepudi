@@ -17,7 +17,6 @@ const state = {
     verified: false,
     accessToken: '',
     mobile: '',
-    reqId: '',
     loading: false
   }
 };
@@ -523,13 +522,27 @@ async function initializeMSG91() {
  * RESET OTP STATE
  */
 function resetOTPState() {
-  state.otp = {
-    initialized: state.otp.initialized,
+    state.otp = {
+  initialized: false,
+  requested: false,
+  verified: false,
+  accessToken: '',
+  mobile: '',
+  reqId: '',
+  loading: false
+};
+state.otp = {
+    initialized:
+      state.otp.initialized,
+
     requested: false,
+
     verified: false,
+
     accessToken: '',
+
     mobile: '',
-    reqId: '',
+
     loading: false
   };
 }
@@ -912,24 +925,10 @@ async function sendSignupOTP() {
       normalizedMobile,
 
       data => {
-        const reqId =
-          data?.reqId ||
-          data?.reqID ||
-          data?.requestId ||
-          data?.message ||
-          data?.data?.reqId ||
-          data?.data?.reqID ||
-          data?.data?.requestId ||
-          data?.data?.message ||
-          '';
-
-        if (!reqId) {
-          console.error('MSG91 Send OTP response did not include reqId:', data);
-          toast('OTP service did not return a request ID. Please try again.');
-          return;
-        }
-
-        state.otp.reqId = reqId;
+        console.log(
+          'OTP sent:',
+          data
+        );
 
         state.otp.requested =
           true;
@@ -1002,9 +1001,9 @@ async function verifySignupOTP() {
   const otp =
     otpInput.value.trim();
 
-  if (!state.otp.requested || !state.otp.reqId) {
+  if (!state.otp.requested) {
     toast(
-      'Please send a new OTP first.'
+      'Please send the OTP first.'
     );
     return;
   }
@@ -1119,9 +1118,7 @@ async function verifySignupOTP() {
         button.textContent =
           'Verify OTP';
       }
-    },
-
-    state.otp.reqId
+    }
   );
 }
 
@@ -1131,8 +1128,7 @@ async function verifySignupOTP() {
 async function resendSignupOTP() {
   if (
     !state.otp.requested ||
-    !state.otp.mobile ||
-    !state.otp.reqId
+    !state.otp.mobile
   ) {
     toast(
       'Please send an OTP first.'
@@ -1156,18 +1152,10 @@ async function resendSignupOTP() {
       '11',
 
       data => {
-        const newReqId =
-          data?.reqId ||
-          data?.reqID ||
-          data?.requestId ||
-          data?.data?.reqId ||
-          data?.data?.reqID ||
-          data?.data?.requestId ||
-          '';
-
-        if (newReqId) {
-          state.otp.reqId = newReqId;
-        }
+        console.log(
+          'OTP resent:',
+          data
+        );
 
         toast(
           'A new OTP has been sent.'
@@ -1183,11 +1171,8 @@ async function resendSignupOTP() {
         toast(
           'Unable to resend OTP.'
         );
-      },
-
-      state.otp.reqId
+      }
     );
-
   } catch (error) {
     toast(
       error.message
