@@ -916,9 +916,11 @@ async function sendSignupOTP() {
           data?.reqId ||
           data?.reqID ||
           data?.requestId ||
+          data?.message ||
           data?.data?.reqId ||
           data?.data?.reqID ||
           data?.data?.requestId ||
+          data?.data?.message ||
           '';
 
         if (!reqId) {
