@@ -17,7 +17,8 @@ const state = {
     verified: false,
     accessToken: '',
     mobile: '',
-    loading: false
+    loading: false,
+    pendingVerify: false
   }
 };
 
@@ -500,6 +501,15 @@ async function initializeMSG91() {
         'MSG91 success:',
         data
       );
+
+      // MSG91's custom Web SDK can return the OTP verification
+      // token through the main configuration callback rather than
+      // the verifyOtp callback. Capture it here as well.
+      const token = extractMSG91AccessToken(data);
+
+      if (token && state.otp.pendingVerify) {
+        finishOTPVerification(token);
+      }
     },
 
     failure: error => {
@@ -543,7 +553,11 @@ state.otp = {
 
     mobile: '',
 
-    loading: false
+    reqId: '',
+
+    loading: false,
+
+    pendingVerify: false
   };
 }
 
@@ -990,136 +1004,156 @@ async function sendSignupOTP() {
 }
 
 /*
+ * MSG91 ACCESS TOKEN HELPERS
+ */
+function extractMSG91AccessToken(data) {
+  const preferredKeys = [
+    'access-token',
+    'accessToken',
+    'access_token',
+    'jwt',
+    'token'
+  ];
+
+  const seen = new Set();
+
+  function walk(value) {
+    if (!value || typeof value !== 'object') return '';
+    if (seen.has(value)) return '';
+    seen.add(value);
+
+    for (const key of preferredKeys) {
+      const candidate = value?.[key];
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    for (const valueItem of Object.values(value)) {
+      const found = walk(valueItem);
+      if (found) return found;
+    }
+
+    return '';
+  }
+
+  if (typeof data === 'string') {
+    const text = data.trim();
+    // JWTs contain two dots. This also protects us from treating
+    // an OTP or request id as an access token.
+    if ((text.match(/\./g) || []).length === 2) return text;
+  }
+
+  return walk(data);
+}
+
+function finishOTPVerification(accessToken) {
+  if (!accessToken) return false;
+
+  state.otp.verified = true;
+  state.otp.pendingVerify = false;
+  state.otp.accessToken = accessToken;
+
+  const status = $('#otpStatus');
+  if (status) {
+    status.textContent =
+      '✓ Mobile number verified successfully.';
+  }
+
+  const otpInput = $('#signupOtp');
+  if (otpInput) otpInput.disabled = true;
+
+  const verifyButton = $('#verifyOtpButton');
+  if (verifyButton) {
+    verifyButton.disabled = true;
+    verifyButton.textContent = '✓ Verified';
+  }
+
+  const sendButton = $('#sendOtpButton');
+  if (sendButton) {
+    sendButton.disabled = true;
+    sendButton.textContent = '✓ Mobile verified';
+  }
+
+  toast('Mobile number verified.');
+  return true;
+}
+
+/*
  * VERIFY OTP
  */
 async function verifySignupOTP() {
-  const otpInput =
-    $('#signupOtp');
-
+  const otpInput = $('#signupOtp');
   if (!otpInput) return;
 
-  const otp =
-    otpInput.value.trim();
+  const otp = otpInput.value.trim();
 
-  if (!state.otp.requested) {
-    toast(
-      'Please send the OTP first.'
-    );
+  if (!state.otp.requested || !state.otp.reqId) {
+    toast('Please send a new OTP first.');
     return;
   }
 
   if (!/^\d{4,8}$/.test(otp)) {
-    toast(
-      'Enter the OTP you received.'
-    );
+    toast('Enter the OTP you received.');
     return;
   }
 
-  const button =
-    $('#verifyOtpButton');
-
+  const button = $('#verifyOtpButton');
   if (button) {
     button.disabled = true;
-    button.textContent =
-      'Verifying...';
+    button.textContent = 'Verifying...';
   }
 
-  window.verifyOtp(
-    otp,
+  state.otp.pendingVerify = true;
 
-    data => {
-      console.log(
-        'OTP verified:',
-        data
-      );
+  try {
+    window.verifyOtp(
+      otp,
+      data => {
+        console.log('OTP verified callback:', data);
 
-      const accessToken =
-        data?.['access-token'] ||
-        data?.accessToken ||
-        data?.token ||
-        data?.data?.['access-token'] ||
-        data?.data?.accessToken ||
-        '';
+        const accessToken = extractMSG91AccessToken(data);
 
-      if (!accessToken) {
-        console.error(
-          'MSG91 response:',
-          data
-        );
-
-        toast(
-          'OTP verified, but no verification token was returned.'
-        );
-
-        if (button) {
-          button.disabled =
-            false;
-          button.textContent =
-            'Verify OTP';
+        if (accessToken) {
+          finishOTPVerification(accessToken);
+          return;
         }
 
-        return;
-      }
-
-      state.otp.verified =
-        true;
-
-      state.otp.accessToken =
-        accessToken;
-
-      const status =
-        $('#otpStatus');
-
-      if (status) {
-        status.textContent =
-          '✓ Mobile number verified successfully.';
-      }
-
-      if (otpInput) {
-        otpInput.disabled =
-          true;
-      }
-
-      if (button) {
-        button.disabled =
-          true;
-        button.textContent =
-          '✓ Verified';
-      }
-
-      const sendButton =
-        $('#sendOtpButton');
-
-      if (sendButton) {
-        sendButton.disabled =
-          true;
-        sendButton.textContent =
-          '✓ Mobile verified';
-      }
-
-      toast(
-        'Mobile number verified.'
-      );
-    },
-
-    error => {
-      console.error(
-        'OTP verification error:',
-        error
-      );
-
-      toast(
-        'Invalid or expired OTP.'
-      );
-
-      if (button) {
-        button.disabled =
-          false;
-        button.textContent =
-          'Verify OTP';
-      }
+        // MSG91 documents that the access token is returned after
+        // successful verification. With the custom SDK it may arrive
+        // through the configuration success callback instead. Give
+        // that callback a moment before declaring failure.
+        setTimeout(() => {
+          if (state.otp.pendingVerify && !state.otp.accessToken) {
+            state.otp.pendingVerify = false;
+            toast('OTP verified, but MSG91 did not return the verification token.');
+            if (button) {
+              button.disabled = false;
+              button.textContent = 'Verify OTP';
+            }
+          }
+        }, 1200);
+      },
+      error => {
+        console.error('OTP verification error:', error);
+        state.otp.pendingVerify = false;
+        toast('Invalid or expired OTP.');
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Verify OTP';
+        }
+      },
+      state.otp.reqId
+    );
+  } catch (error) {
+    console.error('OTP verification exception:', error);
+    state.otp.pendingVerify = false;
+    toast(error.message || 'Unable to verify OTP.');
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Verify OTP';
     }
-  );
+  }
 }
 
 /*
