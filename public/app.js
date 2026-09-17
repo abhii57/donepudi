@@ -5,6 +5,9 @@ const MSG91_WIDGET_ID = '36696f63576e373530373136';
 const MSG91_WIDGET_TOKEN =
   '571343TCANRG8SAyJk6aa8c21fP1';
 
+const DONEPUDI_OTP_FIX_VERSION = '2026-09-17-definitive-1';
+console.log('Donepudi OTP build:', DONEPUDI_OTP_FIX_VERSION);
+
 const state = {
   token: localStorage.token || '',
   user: JSON.parse(
@@ -921,13 +924,12 @@ async function sendSignupOTP() {
           data?.data?.requestId ||
           '';
 
-        if (!reqId) {
-          console.error('MSG91 Send OTP response did not include reqId:', data);
-          toast('OTP service did not return a request ID. Please try again.');
-          return;
+        // MSG91 Web SDK custom UI does not require the browser
+        // app to receive/store reqId from the sendOtp callback.
+        // The SDK keeps the active OTP request internally.
+        if (reqId) {
+          state.otp.reqId = reqId;
         }
-
-        state.otp.reqId = reqId;
 
         state.otp.requested =
           true;
@@ -1000,7 +1002,7 @@ async function verifySignupOTP() {
   const otp =
     otpInput.value.trim();
 
-  if (!state.otp.requested || !state.otp.reqId) {
+  if (!state.otp.requested) {
     toast(
       'Please send a new OTP first.'
     );
@@ -1118,8 +1120,6 @@ async function verifySignupOTP() {
           'Verify OTP';
       }
     },
-
-    state.otp.reqId
   );
 }
 
@@ -1129,8 +1129,7 @@ async function verifySignupOTP() {
 async function resendSignupOTP() {
   if (
     !state.otp.requested ||
-    !state.otp.mobile ||
-    !state.otp.reqId
+    !state.otp.mobile
   ) {
     toast(
       'Please send an OTP first.'
@@ -1182,8 +1181,6 @@ async function resendSignupOTP() {
           'Unable to resend OTP.'
         );
       },
-
-      state.otp.reqId
     );
 
   } catch (error) {
