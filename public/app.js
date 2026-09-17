@@ -1028,19 +1028,61 @@ async function verifySignupOTP() {
   window.verifyOtp(
     otp,
 
-    data => {
+    (data, callbackToken) => {
       console.log(
         'OTP verified:',
         data
       );
 
+      const extractMsg91AccessToken = value => {
+        if (typeof value === 'string') {
+          const text = value.trim();
+
+          if (
+            text.length > 50 &&
+            text.split('.').length === 3
+          ) {
+            return text;
+          }
+
+          return '';
+        }
+
+        if (!value || typeof value !== 'object') {
+          return '';
+        }
+
+        const priorityKeys = [
+          'access-token',
+          'accessToken',
+          'access_token',
+          'token',
+          'jwt',
+          'data',
+          'response',
+          'result'
+        ];
+
+        for (const key of priorityKeys) {
+          const found =
+            extractMsg91AccessToken(value[key]);
+
+          if (found) return found;
+        }
+
+        for (const child of Object.values(value)) {
+          const found =
+            extractMsg91AccessToken(child);
+
+          if (found) return found;
+        }
+
+        return '';
+      };
+
       const accessToken =
-        data?.['access-token'] ||
-        data?.accessToken ||
-        data?.token ||
-        data?.data?.['access-token'] ||
-        data?.data?.accessToken ||
-        '';
+        extractMsg91AccessToken(callbackToken) ||
+        extractMsg91AccessToken(data);
 
       if (!accessToken) {
         console.error(
