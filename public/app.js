@@ -1023,69 +1023,104 @@ async function verifySignupOTP() {
       'Verifying...';
   }
 
-  try {
-    const response = await api(
-      '/api/auth/verify-otp',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          reqId: state.otp.reqId,
-          otp
-        })
+  window.verifyOtp(
+    otp,
+
+    data => {
+      console.log(
+        'OTP verified:',
+        data
+      );
+
+      const accessToken =
+        data?.['access-token'] ||
+        data?.accessToken ||
+        data?.token ||
+        data?.data?.['access-token'] ||
+        data?.data?.accessToken ||
+        '';
+
+      if (!accessToken) {
+        console.error(
+          'MSG91 response:',
+          data
+        );
+
+        toast(
+          'OTP verified, but no verification token was returned.'
+        );
+
+        if (button) {
+          button.disabled =
+            false;
+          button.textContent =
+            'Verify OTP';
+        }
+
+        return;
       }
-    );
 
-    const accessToken =
-      response?.accessToken ||
-      response?.['access-token'] ||
-      response?.token ||
-      '';
+      state.otp.verified =
+        true;
 
-    if (!accessToken) {
+      state.otp.accessToken =
+        accessToken;
+
+      const status =
+        $('#otpStatus');
+
+      if (status) {
+        status.textContent =
+          '✓ Mobile number verified successfully.';
+      }
+
+      if (otpInput) {
+        otpInput.disabled =
+          true;
+      }
+
+      if (button) {
+        button.disabled =
+          true;
+        button.textContent =
+          '✓ Verified';
+      }
+
+      const sendButton =
+        $('#sendOtpButton');
+
+      if (sendButton) {
+        sendButton.disabled =
+          true;
+        sendButton.textContent =
+          '✓ Mobile verified';
+      }
+
+      toast(
+        'Mobile number verified.'
+      );
+    },
+
+    error => {
       console.error(
-        'Donepudi OTP verification response:',
-        response
+        'OTP verification error:',
+        error
       );
-      throw new Error(
-        'OTP verified, but MSG91 did not return a verification token.'
+
+      toast(
+        'Invalid or expired OTP.'
       );
-    }
 
-    state.otp.verified = true;
-    state.otp.accessToken = accessToken;
+      if (button) {
+        button.disabled =
+          false;
+        button.textContent =
+          'Verify OTP';
+      }
+    },
 
-    const status = $('#otpStatus');
-    if (status) {
-      status.textContent =
-        '✓ Mobile number verified successfully.';
-    }
-
-    if (otpInput) {
-      otpInput.disabled = true;
-    }
-
-    if (button) {
-      button.disabled = true;
-      button.textContent = '✓ Verified';
-    }
-
-    const sendButton = $('#sendOtpButton');
-    if (sendButton) {
-      sendButton.disabled = true;
-      sendButton.textContent = '✓ Mobile verified';
-    }
-
-    toast('Mobile number verified.');
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    toast(error.message || 'Invalid or expired OTP.');
-
-    if (button) {
-      button.disabled = false;
-      button.textContent = 'Verify OTP';
-    }
-  }
-
+    state.otp.reqId
+  );
 }
 
 /*
