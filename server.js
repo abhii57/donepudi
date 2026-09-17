@@ -79,7 +79,7 @@ function adminOnly(req, res, next) {
   requireAuth(req, res, () => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
-        error: 'Only administrators can perform this action.'
+        error: 'Only editors can publish news.'
       });
     }
 
@@ -203,6 +203,81 @@ app.post('/api/auth/check-signup', async (req, res) => {
     res.status(500).json({
       error:
         'Unable to validate signup details.'
+    });
+  }
+});
+
+/*
+ * VERIFY MSG91 OTP SERVER-SIDE
+ *
+ * The browser sends only reqId + OTP. The MSG91
+ * Authkey remains on the server. MSG91 returns
+ * the access-token (JWT) after successful OTP
+ * verification.
+ */
+app.post('/api/auth/verify-otp', async (req, res) => {
+  try {
+    const { reqId, otp } = req.body;
+
+    if (!reqId || !/^\d{4,8}$/.test(String(otp || ''))) {
+      return res.status(400).json({
+        error: 'Request ID and a valid OTP are required.'
+      });
+    }
+
+    const msg91Authkey = process.env.MSG91_AUTHKEY;
+
+    if (!msg91Authkey) {
+      console.error('MSG91_AUTHKEY is missing.');
+      return res.status(500).json({
+        error: 'OTP service is not configured.'
+      });
+    }
+
+    const verifyResponse = await fetch(
+      'https://api.msg91.com/api/v5/widget/verifyOtp',
+      {
+        method: 'POST',
+        headers: {
+          authkey: msg91Authkey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reqId: String(reqId),
+          otp: String(otp)
+        })
+      }
+    );
+
+    const verifyData = await verifyResponse.json().catch(() => ({}));
+
+    if (!verifyResponse.ok) {
+      console.error('MSG91 OTP verification failed:', verifyData);
+      return res.status(400).json({
+        error: verifyData?.message || 'Invalid or expired OTP.'
+      });
+    }
+
+    const accessToken =
+      verifyData?.['access-token'] ||
+      verifyData?.accessToken ||
+      verifyData?.data?.['access-token'] ||
+      verifyData?.data?.accessToken ||
+      verifyData?.token ||
+      '';
+
+    if (!accessToken) {
+      console.error('MSG91 verification returned no access token:', verifyData);
+      return res.status(502).json({
+        error: 'OTP was accepted, but MSG91 did not return a verification token.'
+      });
+    }
+
+    res.json({ ok: true, accessToken });
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({
+      error: 'Unable to verify OTP right now.'
     });
   }
 });
@@ -904,7 +979,6 @@ app.post(
     res.status(201).json(comment);
   }
 );
-
 
 /*
  * TOURNAMENTS
