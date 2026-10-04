@@ -1,4 +1,5 @@
-const API_BASE = 'https://donepudi.onrender.com';
+// Keep API calls on the deployed origin so Render's service name can change.
+const API_BASE = '';
 
 const MSG91_WIDGET_ID = '36696f63576e373530373136';
 

@@ -174,42 +174,42 @@ export async function initializeDatabase() {
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
-  if (!adminEmail || !adminPassword) {
-    throw new Error(
-      'ADMIN_EMAIL and ADMIN_PASSWORD must be configured.'
+  if (adminEmail && adminPassword) {
+    /*
+     * Find the existing admin account by role.
+     * This preserves the existing admin user while updating
+     * the credentials from Render environment variables.
+     */
+    const { rows: [admin] } = await pool.query(
+      "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
     );
-  }
 
-  /*
-   * Find the existing admin account by role.
-   * This preserves the existing admin user while updating
-   * the credentials from Render environment variables.
-   */
-  const { rows: [admin] } = await pool.query(
-    "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
-  );
+    const adminHash = await bcrypt.hash(adminPassword, 10);
 
-  const adminHash = await bcrypt.hash(adminPassword, 10);
-
-  if (admin) {
-    await pool.query(
-      'UPDATE users SET email = $1, password_hash = $2, name = $3, role = $4 WHERE id = $5',
-      [
-        adminEmail.toLowerCase(),
-        adminHash,
-        'Donepudi Admin',
-        'admin',
-        admin.id
-      ]
-    );
+    if (admin) {
+      await pool.query(
+        'UPDATE users SET email = $1, password_hash = $2, name = $3, role = $4 WHERE id = $5',
+        [
+          adminEmail.toLowerCase(),
+          adminHash,
+          'Donepudi Admin',
+          'admin',
+          admin.id
+        ]
+      );
+    } else {
+      await pool.query(
+        "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
+        [
+          'Donepudi Admin',
+          adminEmail.toLowerCase(),
+          adminHash
+        ]
+      );
+    }
   } else {
-    await pool.query(
-      "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
-      [
-        'Donepudi Admin',
-        adminEmail.toLowerCase(),
-        adminHash
-      ]
+    console.warn(
+      'ADMIN_EMAIL and ADMIN_PASSWORD are not configured; admin publishing is unavailable.'
     );
   }
 

@@ -1,1 +1,161 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Donepudi — Admin Login</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><style>.admin-page{max-width:620px;margin:80px auto;text-align:center}.admin-page h1{font:600 48px 'Playfair Display';margin:0 0 14px}.admin-page p:not(.eyebrow){color:#55615c}</style></head><body><div class="ticker"><span>ADMIN</span><div>Donepudi administration</div></div><nav><a class="brand" href="index.html">Done<span>pudi</span></a><div class="navlinks"><a href="news.html">Top stories</a><a href="members.html">Members</a><a href="help.html">Helpline</a><a href="map.html">Map</a><a href="about.html">About</a><a href="admin.html">Admin login</a></div><div id="account"></div></nav><main><section class="admin-page"><p class="eyebrow">ADMINISTRATION</p><h1>Administrator sign in</h1><p>Sign in to publish news, manage members, and view registered users.</p><button class="primary" onclick="openAdminLogin()">Admin login →</button></section></main><dialog id="authModal"><button class="close" onclick="authModal.close()">×</button><div id="authContent"></div></dialog><div id="toast"></div><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Donepudi — Admin Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.admin-page{max-width:760px;margin:80px auto;text-align:center}
+.admin-page h1{font:600 48px 'Playfair Display';margin:0 0 14px}
+.admin-page p:not(.eyebrow){color:#55615c}
+.tournament-admin{display:none;max-width:1000px;margin:45px auto 80px}
+.tournament-admin.show{display:block}
+.ta-card{background:#fffdfa;border:1px solid #dedbd4;border-radius:20px;padding:28px;margin-top:22px}
+.ta-card h2{font:600 34px 'Playfair Display';margin:0 0 8px}
+.ta-muted{color:#68726d;font-size:14px}
+.ta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ta-grid .full{grid-column:1/-1}
+.ta-card input,.ta-card textarea,.ta-card select{width:100%;padding:12px 14px;border:1px solid #dedbd4;border-radius:10px;background:#fff;font:14px 'DM Sans';margin-top:6px}
+.ta-card textarea{min-height:90px;resize:vertical}
+.ta-label{display:block;text-align:left;color:#52615a;font-size:12px;font-weight:700;margin-top:10px}
+.ta-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.ta-list{display:grid;gap:14px;margin-top:18px}
+.ta-item{border:1px solid #dedbd4;border-radius:14px;padding:18px;text-align:left;background:#fff}
+.ta-item strong{font:600 22px 'Playfair Display'}
+.ta-item small{display:block;color:#68726d;margin-top:5px}
+.ta-item .ta-row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.ta-match{margin-top:12px;padding:12px;border-radius:10px;background:#f5f1e9}
+.ta-error{color:#b8473e;background:#fff0ed;padding:10px 12px;border-radius:10px;margin-top:12px;display:none;text-align:left}
+.ta-success{color:#245b4e;background:#eaf6f0;padding:10px 12px;border-radius:10px;margin-top:12px;display:none;text-align:left}
+@media(max-width:760px){.admin-page{margin:45px auto}.admin-page h1{font-size:40px}.tournament-admin{margin:30px 12px 60px}.ta-grid{grid-template-columns:1fr}.ta-grid .full{grid-column:auto}.ta-card{padding:20px}}
+</style>
+</head>
+<body>
+<div class="ticker"><span>ADMIN</span><div>Donepudi administration</div></div>
+<nav>
+  <a class="brand" href="index.html">Done<span>pudi</span></a>
+  <div class="navlinks">
+    <a href="news.html">Top stories</a>
+    <a href="members.html">Members</a>
+    <a href="help.html">Helpline</a>
+    <a href="map.html">Map</a>
+    <a href="about.html">About</a>
+    <a href="tournament.html">🏆 Tournament</a>
+    <a href="admin.html">Admin login</a>
+  </div>
+  <div id="account"></div>
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Open menu" aria-expanded="false">☰</button>
+</nav>
+<div id="mobileMenu" class="mobile-menu">
+  <a href="news.html" onclick="closeMobileMenu()">Top stories</a>
+  <a href="members.html" onclick="closeMobileMenu()">Members</a>
+  <a href="help.html" onclick="closeMobileMenu()">Helpline</a>
+  <a href="map.html" onclick="closeMobileMenu()">Map</a>
+  <a href="about.html" onclick="closeMobileMenu()">About</a>
+  <a href="tournament.html" onclick="closeMobileMenu()">🏆 Tournament</a>
+  <a href="admin.html" onclick="closeMobileMenu()">Admin login</a>
+  <div class="mobile-auth">
+    <button class="ghost" onclick="openAuth('login');closeMobileMenu()">Log in</button>
+    <button class="primary" onclick="openAuth('signup');closeMobileMenu()">Sign up</button>
+  </div>
+</div>
+
+<main>
+<section class="admin-page">
+  <p class="eyebrow">ADMINISTRATION</p>
+  <h1>Administrator sign in</h1>
+  <p>Sign in to publish news, manage members, view registered users, and manage tournaments.</p>
+  <button class="primary" onclick="openAdminLogin()">Admin login →</button>
+</section>
+
+<section id="tournamentAdmin" class="tournament-admin">
+  <div class="section-head"><div>
+    <p class="eyebrow">TOURNAMENT MANAGEMENT</p>
+    <h2>🏆 Manage tournaments</h2>
+  </div></div>
+
+  <div class="ta-card">
+    <h2>Create tournament</h2>
+    <p class="ta-muted">Create the tournament first. Then add matches below.</p>
+    <form id="createTournamentForm">
+      <div class="ta-grid">
+        <label class="ta-label">Tournament name<input name="name" required placeholder="e.g. Donepudi Cricket Cup 2026"></label>
+        <label class="ta-label">Venue<input name="venue" placeholder="e.g. Donepudi Village Ground"></label>
+        <label class="ta-label">Start date<input name="startDate" type="datetime-local"></label>
+        <label class="ta-label">End date<input name="endDate" type="datetime-local"></label>
+        <label class="ta-label full">Description<textarea name="description" placeholder="Tournament details"></textarea></label>
+        <label class="ta-label full">Live stream URL<input name="liveUrl" type="url" placeholder="https://youtube.com/..."></label>
+        <label class="ta-label"><input name="liveStatus" type="checkbox" style="width:auto;margin-right:8px"> Tournament is live</label>
+      </div>
+      <div class="ta-actions"><button class="primary" type="submit">Create tournament →</button></div>
+    </form>
+    <div id="taCreateError" class="ta-error"></div>
+    <div id="taCreateSuccess" class="ta-success"></div>
+  </div>
+
+  <div class="ta-card">
+    <h2>Add match</h2>
+    <p class="ta-muted">Add the teams and current match information to a tournament.</p>
+    <form id="createMatchForm">
+      <div class="ta-grid">
+        <label class="ta-label full">Tournament<select name="tournamentId" id="matchTournament" required><option value="">Select tournament</option></select></label>
+        <label class="ta-label">Team A<input name="teamA" required placeholder="Team A"></label>
+        <label class="ta-label">Team B<input name="teamB" required placeholder="Team B"></label>
+        <label class="ta-label">Match date<input name="matchDate" type="datetime-local"></label>
+        <label class="ta-label">Venue<input name="venue" placeholder="Ground"></label>
+        <label class="ta-label">Score A<input name="scoreA" placeholder="0/0"></label>
+        <label class="ta-label">Score B<input name="scoreB" placeholder="0/0"></label>
+        <label class="ta-label">Status<select name="status"><option value="Upcoming">Upcoming</option><option value="Live">Live</option><option value="Completed">Completed</option></select></label>
+        <label class="ta-label">Live stream URL<input name="liveUrl" type="url" placeholder="https://youtube.com/..."></label>
+      </div>
+      <div class="ta-actions"><button class="primary" type="submit">Add match →</button><button class="ghost" type="button" onclick="loadTournaments()">Refresh</button></div>
+    </form>
+    <div id="taMatchError" class="ta-error"></div>
+    <div id="taMatchSuccess" class="ta-success"></div>
+  </div>
+
+  <div class="ta-card">
+    <h2>Existing tournaments</h2>
+    <div id="tournamentList" class="ta-list"><p class="ta-muted">Loading...</p></div>
+  </div>
+</section>
+</main>
+
+<dialog id="authModal"><button class="close" onclick="authModal.close()">×</button><div id="authContent"></div></dialog>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+const TOURNAMENT_API='';
+function taHeaders(){const token=localStorage.token||'';return {'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})};}
+async function taApi(path,options={}){const r=await fetch(TOURNAMENT_API+path,{...options,headers:{...taHeaders(),...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Request failed.');return data;}
+function taShow(id,msg){const el=document.getElementById(id);if(!el)return;el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',3500);}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function loadTournaments(){
+  const list=document.getElementById('tournamentList'),select=document.getElementById('matchTournament');if(!list||!select)return;
+  try{
+    const tournaments=await taApi('/api/tournaments');
+    select.innerHTML='<option value="">Select tournament</option>'+tournaments.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    if(!tournaments.length){list.innerHTML='<p class="ta-muted">No tournaments created yet.</p>';return;}
+    list.innerHTML=tournaments.map(t=>{
+      const matches=Array.isArray(t.matches)?t.matches:[];
+      return `<div class="ta-item"><div class="ta-row"><div><strong>${esc(t.name)}</strong><small>${esc(t.venue||'Venue not set')} · ${t.live_status?'LIVE':'Not live'}</small></div><button class="ghost" onclick="deleteTournament(${t.id})">Delete</button></div><small>${esc(t.description||'No description')}</small>${matches.map(m=>`<div class="ta-match"><strong>${esc(m.team_a||'Team A')} vs ${esc(m.team_b||'Team B')}</strong><small>${esc(m.score_a||'0/0')} · ${esc(m.score_b||'0/0')} · ${esc(m.status||'Upcoming')}</small></div>`).join('')}</div>`;
+    }).join('');
+  }catch(e){list.innerHTML=`<p class="ta-muted">${esc(e.message)}</p>`;}
+}
+async function deleteTournament(id){if(!confirm('Delete this tournament and its matches?'))return;try{await taApi('/api/tournaments/'+id,{method:'DELETE'});loadTournaments();}catch(e){alert(e.message);}}
+document.getElementById('createTournamentForm').addEventListener('submit',async e=>{
+  e.preventDefault();try{const f=e.target;await taApi('/api/tournaments',{method:'POST',body:JSON.stringify({name:f.name.value,description:f.description.value,venue:f.venue.value,startDate:f.startDate.value||null,endDate:f.endDate.value||null,liveUrl:f.liveUrl.value,liveStatus:f.liveStatus.checked})});f.reset();taShow('taCreateSuccess','Tournament created successfully.');loadTournaments();}catch(err){taShow('taCreateError',err.message);}
+});
+document.getElementById('createMatchForm').addEventListener('submit',async e=>{
+  e.preventDefault();try{const f=e.target,id=f.tournamentId.value;await taApi('/api/tournaments/'+id+'/matches',{method:'POST',body:JSON.stringify({teamA:f.teamA.value,teamB:f.teamB.value,matchDate:f.matchDate.value||null,venue:f.venue.value,scoreA:f.scoreA.value||'0/0',scoreB:f.scoreB.value||'0/0',status:f.status.value,liveUrl:f.liveUrl.value})});f.reset();taShow('taMatchSuccess','Match added successfully.');loadTournaments();}catch(err){taShow('taMatchError',err.message);}
+});
+function syncTournamentAdmin(){const u=JSON.parse(localStorage.user||'null'),panel=document.getElementById('tournamentAdmin');if(!panel)return;if(u?.role==='admin'){panel.classList.add('show');loadTournaments();}else panel.classList.remove('show');}
+syncTournamentAdmin();
+</script>
+</body>
+</html>

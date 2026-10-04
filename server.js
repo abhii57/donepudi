@@ -758,7 +758,7 @@ app.post(
         body || excerpt,
         category || 'General',
         imageUrl || null,
-        !!isBreaking,
+        isBreaking ? 1 : 0,
         req.user.id
       ]
     );
@@ -834,7 +834,7 @@ app.put(
         body || excerpt,
         category || 'General',
         imageUrl || null,
-        !!isBreaking,
+        isBreaking ? 1 : 0,
         +req.params.id
       ]
     );
@@ -1022,6 +1022,39 @@ app.get('/api/tournaments', async (_req, res) => {
   }
 });
 
+// Compact shape used by the public live centre.
+app.get('/api/tournaments/current', async (_req, res) => {
+  try {
+    const { rows: [match] } = await pool.query(
+      `SELECT m.*, t.name AS tournament_name, t.live_url AS tournament_live_url
+       FROM tournament_matches m
+       JOIN tournaments t ON t.id = m.tournament_id
+       WHERE lower(m.status) = 'live'
+       ORDER BY m.created_at DESC
+       LIMIT 1`
+    );
+    const { rows } = await pool.query(
+      `SELECT m.*, t.name AS tournament_name
+       FROM tournament_matches m
+       JOIN tournaments t ON t.id = m.tournament_id
+       WHERE lower(m.status) = 'upcoming'
+       ORDER BY m.match_date ASC, m.created_at ASC`
+    );
+    res.json({
+      live: match ? {
+        ...match,
+        stream_url: match.live_url || match.tournament_live_url || '',
+        score_a: match.score_a || '0/0',
+        score_b: match.score_b || '0/0'
+      } : null,
+      upcoming: rows
+    });
+  } catch (error) {
+    console.error('Current tournament error:', error);
+    res.status(500).json({ error: 'Unable to load current tournament.' });
+  }
+});
+
 app.post('/api/tournaments', adminOnly, async (req, res) => {
   try {
     const {
@@ -1062,7 +1095,7 @@ app.post('/api/tournaments', adminOnly, async (req, res) => {
         startDate || null,
         endDate || null,
         liveUrl?.trim() || null,
-        !!liveStatus
+        liveStatus ? 1 : 0
       ]
     );
 
@@ -1115,7 +1148,7 @@ app.put('/api/tournaments/:id', adminOnly, async (req, res) => {
         startDate || null,
         endDate || null,
         liveUrl?.trim() || null,
-        !!liveStatus,
+        liveStatus ? 1 : 0,
         +req.params.id
       ]
     );
