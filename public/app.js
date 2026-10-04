@@ -11,9 +11,10 @@ console.log('Donepudi OTP build:', DONEPUDI_OTP_FIX_VERSION);
 
 const state = {
   token: localStorage.token || '',
-  user: JSON.parse(
-    localStorage.user || 'null'
-  ),
+  user: (() => {
+    try { return JSON.parse(localStorage.user || 'null'); }
+    catch { return null; }
+  })(),
   articles: [],
   otp: {
     initialized: false,
@@ -86,6 +87,7 @@ function updateAccount() {
   if (!account) return;
 
   if (!state.user) {
+    document.body.classList.remove('admin-logged-in');
     account.innerHTML = `
       <div class="account-actions">
         <button
@@ -132,19 +134,17 @@ function updateAccount() {
             : ''
         }
 
-        ${
-          $('#postModal')
-            ? `
-              <button
-                class="primary"
-                onclick="postModal.showModal()">
-                Publish +
-              </button>
-            `
-            : ''
-        }
       `
       : '';
+
+  const createPostButton = $('#postModal')
+    ? `<button class="primary" onclick="openCreatePost()">Create post +</button>`
+    : '';
+
+  document.body.classList.toggle(
+    'admin-logged-in',
+    state.user.role === 'admin'
+  );
 
   account.innerHTML = `
     <div class="account-actions">
@@ -158,6 +158,8 @@ function updateAccount() {
           state.user.name.split(' ')[0]
         )}
       </div>
+
+      ${createPostButton}
 
       ${adminTools}
 
@@ -565,6 +567,23 @@ function openAdminLogin() {
     'login',
     true
   );
+}
+
+function openCreatePost() {
+  if (!state.user) {
+    openAuth('login');
+    return;
+  }
+
+  const form = $('#postForm');
+  if (!form) return;
+
+  form.reset();
+  form.elements.id.value = '';
+  form.elements.category.value = 'Community';
+  $('#postModalTitle').textContent = 'Create a post';
+  $('#postSubmitLabel').textContent = 'Share with the village →';
+  postModal.showModal();
 }
 
 /*
@@ -1435,6 +1454,24 @@ function logout() {
   );
 }
 
+async function restoreSession() {
+  if (state.token) {
+    try {
+      const session = await api('/api/auth/me');
+      state.user = session.user;
+      localStorage.user = JSON.stringify(session.user);
+    } catch {
+      state.token = '';
+      state.user = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+  }
+
+  updateAccount();
+  await Promise.allSettled([load(), loadMembers()]);
+}
+
 /*
  * LIKE
  */
@@ -1893,9 +1930,12 @@ if ($('#postForm')) {
           delete data.imageUrl;
         }
 
+        const postTitle = form.title.value.trim();
+        const postExcerpt = form.excerpt.value.trim();
+        data.title = postTitle || postExcerpt.slice(0, 70);
+        data.excerpt = postExcerpt;
         data.isBreaking =
-          !!form.isBreaking
-            .checked;
+          state.user?.role === 'admin' && !!form.isBreaking?.checked;
 
         const editing =
           !!form.elements.id.value;
@@ -1921,20 +1961,18 @@ if ($('#postForm')) {
 
         form.reset();
 
-        $('#postModalTitle')
-          .textContent =
-          'Publish a story';
+        $('#postModalTitle').textContent = 'Create a post';
 
         $('#postSubmitLabel')
           .textContent =
-          'Publish story →';
+          'Share with the village →';
 
         load();
 
         toast(
           editing
             ? 'Story updated.'
-            : 'Story published to the feed.'
+            : 'Your post is live in the village feed.'
         );
       } catch (error) {
         toast(
@@ -2069,11 +2107,7 @@ document.addEventListener(
 /*
  * INITIAL LOAD
  */
-updateAccount();
-
-load();
-
-loadMembers();
+restoreSession();
 
 setInterval(
   load,

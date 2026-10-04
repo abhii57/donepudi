@@ -571,6 +571,20 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const { rows: [user] } = await pool.query(
+      'SELECT id, name, email, mobile, role FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!user) return res.status(401).json({ error: 'Please sign in again.' });
+    res.json({ user });
+  } catch (error) {
+    console.error('Session lookup error:', error);
+    res.status(500).json({ error: 'Unable to restore your session.' });
+  }
+});
+
 /*
  * ARTICLES
  */
@@ -718,7 +732,7 @@ app.post(
  */
 app.post(
   '/api/articles',
-  adminOnly,
+  requireAuth,
   async (req, res) => {
     const {
       title,
@@ -758,7 +772,7 @@ app.post(
         body || excerpt,
         category || 'General',
         imageUrl || null,
-        isBreaking ? 1 : 0,
+        req.user.role === 'admin' && isBreaking ? 1 : 0,
         req.user.id
       ]
     );
