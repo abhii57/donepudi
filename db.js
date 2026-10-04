@@ -72,6 +72,8 @@ export async function initializeDatabase() {
       email TEXT UNIQUE NOT NULL,
       mobile TEXT UNIQUE,
       mobile_verified INTEGER NOT NULL DEFAULT 0,
+      profile_photo TEXT,
+      google_id TEXT UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'reader',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -165,6 +167,10 @@ export async function initializeDatabase() {
     );
   } catch {}
 
+  try { database.run('ALTER TABLE users ADD COLUMN profile_photo TEXT'); } catch {}
+  try { database.run('ALTER TABLE users ADD COLUMN google_id TEXT'); } catch {}
+  database.run('CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique ON users(google_id) WHERE google_id IS NOT NULL');
+
   /*
    * ADMIN ACCOUNT
    *
@@ -180,9 +186,14 @@ export async function initializeDatabase() {
      * This preserves the existing admin user while updating
      * the credentials from Render environment variables.
      */
-    const { rows: [admin] } = await pool.query(
-      "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
+    const { rows: [configuredAccount] } = await pool.query(
+      'SELECT id FROM users WHERE lower(email) = $1 ORDER BY id LIMIT 1',
+      [adminEmail.trim().toLowerCase()]
     );
+    const { rows: [existingAdmin] } = configuredAccount
+      ? { rows: [] }
+      : await pool.query("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+    const admin = configuredAccount || existingAdmin;
 
     const adminHash = await bcrypt.hash(adminPassword, 10);
 
@@ -190,7 +201,7 @@ export async function initializeDatabase() {
       await pool.query(
         'UPDATE users SET email = $1, password_hash = $2, name = $3, role = $4 WHERE id = $5',
         [
-          adminEmail.toLowerCase(),
+          adminEmail.trim().toLowerCase(),
           adminHash,
           'Donepudi Admin',
           'admin',
@@ -202,7 +213,7 @@ export async function initializeDatabase() {
         "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')",
         [
           'Donepudi Admin',
-          adminEmail.toLowerCase(),
+          adminEmail.trim().toLowerCase(),
           adminHash
         ]
       );

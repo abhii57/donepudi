@@ -32,7 +32,7 @@
   </div>
 
   <main class="home-shell">
-    <div class="welcome-line"><div><p class="eyebrow">MONDAY, OCTOBER 5</p><h1>Namaskaram, <span>Donepudi.</span></h1><p class="welcome-sub">Our village. Our people. Our stories.</p></div><button class="round-account" onclick="openAuth('login')" aria-label="Sign in">♙</button></div>
+    <div class="welcome-line"><div><p class="eyebrow">OUR VILLAGE · OUR STORIES</p><h1>Namaskaram, <span>Donepudi.</span></h1><p class="welcome-sub">Our village. Our people. Our stories.</p></div><button class="round-account" onclick="openProfile()" aria-label="Open your profile">♙</button></div>
 
     <section class="village-hero" aria-label="Welcome to Donepudi">
       <img src="donepudi-village-hero.jpg" alt="A village road beneath a large tree with a traditional entrance and temple in the distance">
@@ -46,6 +46,11 @@
       <a class="quick-link q-events" href="tournament.html"><span>▦</span><b>Events</b></a>
       <a class="quick-link q-map" href="map.html"><span>⌖</span><b>Village map</b></a>
       <a class="quick-link q-people" href="members.html"><span>♧</span><b>Members</b></a>
+    </section>
+
+    <section id="announcements" class="village-highlights" hidden>
+      <div class="section-heading"><div><p class="eyebrow">FROM THE VILLAGE TEAM</p><h2>Highlights & announcements</h2></div><span class="announcement-badge">IMPORTANT</span></div>
+      <div id="highlightGrid" class="highlight-grid"></div>
     </section>
 
     <section class="feed-section" id="feed">
@@ -77,6 +82,7 @@
   <dialog id="authModal" class="app-dialog"><button class="close" onclick="authModal.close()" aria-label="Close">×</button><div id="authContent"></div></dialog>
   <dialog id="postModal" class="app-dialog"><button class="close" onclick="postModal.close()" aria-label="Close">×</button><form id="postForm"><input name="id" type="hidden"><p class="eyebrow">COMMUNITY POST</p><h2 id="postModalTitle">Create a post</h2><input name="title" placeholder="Give your post a title" required><textarea name="excerpt" placeholder="What’s happening in Donepudi?" required></textarea><input name="category" value="Community" placeholder="Category"><label class="check">Add a photo <input name="imageFile" type="file" accept="image/*"></label><input name="imageUrl" type="url" placeholder="Or paste a photo URL (optional)"><label class="check admin-only"><input name="isBreaking" type="checkbox"> Mark as an important update</label><button class="primary" id="postSubmitLabel">Share with the village →</button></form></dialog>
   <dialog id="userModal" class="app-dialog"><button class="close" onclick="userModal.close()" aria-label="Close">×</button><div id="userContent"></div></dialog>
+  <dialog id="profileModal" class="app-dialog profile-dialog"><button class="close" onclick="profileModal.close()" aria-label="Close">×</button><div id="profileContent"></div></dialog>
   <dialog id="memberModal" class="app-dialog"><button class="close" onclick="memberModal.close()" aria-label="Close">×</button><form id="memberForm"><p class="eyebrow">MEMBER DIRECTORY</p><h2>Add a member</h2><input name="name" placeholder="Member name" required><label class="check">Upload photo <input name="photoFile" type="file" accept="image/*"></label><input name="photoUrl" type="url" placeholder="Or paste a photo URL"><textarea name="note" placeholder="Member note" required></textarea><button class="primary">Add member →</button></form></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>

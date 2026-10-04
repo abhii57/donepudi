@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { createPublicKey, randomBytes } from 'node:crypto';
 
 import { pool, initializeDatabase } from './db.js';
 
@@ -87,435 +88,179 @@ function adminOnly(req, res, next) {
   });
 }
 
-/*
- * NORMALIZE INDIAN MOBILE NUMBER
- *
- * 9876543210
- * 919876543210
- * +919876543210
- *
- * become:
- * 919876543210
- */
-function normalizeIndianMobile(value) {
-  const digits = String(value || '').replace(/\D/g, '');
-
-  if (digits.length === 10) {
-    return '91' + digits;
-  }
-
-  if (
-    digits.length === 12 &&
-    digits.startsWith('91')
-  ) {
-    return digits;
-  }
-
-  return null;
+function validProfilePhoto(value) {
+  return typeof value === 'string' &&
+    /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value) &&
+    value.length <= 450_000;
 }
 
-/*
- * CHECK SIGNUP DETAILS BEFORE SENDING OTP
- */
-app.post('/api/auth/check-signup', async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      mobile,
-      password,
-      confirmPassword
-    } = req.body;
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    mobile: user.mobile || null,
+    role: user.role,
+    profilePhoto: user.profile_photo || null
+  };
+}
 
-    if (
-      !name?.trim() ||
-      !email?.trim() ||
-      !mobile?.trim() ||
-      !password ||
-      !confirmPassword
-    ) {
-      return res.status(400).json({
-        error:
-          'Please fill in all signup fields.'
-      });
-    }
+function finishLogin(res, user, status = 200) {
+  return res.status(status).json({
+    user: publicUser(user),
+    token: tokenFor(user)
+  });
+}
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        error:
-          'Password must be at least 6 characters.'
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({
-        error: 'Passwords do not match.'
-      });
-    }
-
-    const normalizedMobile =
-      normalizeIndianMobile(mobile);
-
-    if (!normalizedMobile) {
-      return res.status(400).json({
-        error:
-          'Enter a valid Indian mobile number.'
-      });
-    }
-
-    const emailAddress =
-      email.trim().toLowerCase();
-
-    const emailResult = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
-      [emailAddress]
-    );
-
-    if (emailResult.rowCount) {
-      return res.status(409).json({
-        error:
-          'That email is already registered.'
-      });
-    }
-
-    const mobileResult = await pool.query(
-      'SELECT id FROM users WHERE mobile = $1',
-      ['+' + normalizedMobile]
-    );
-
-    if (mobileResult.rowCount) {
-      return res.status(409).json({
-        error:
-          'That mobile number is already registered.'
-      });
-    }
-
-    res.json({
-      ok: true,
-      mobile: normalizedMobile
-    });
-  } catch (error) {
-    console.error(
-      'Signup validation error:',
-      error
-    );
-
-    res.status(500).json({
-      error:
-        'Unable to validate signup details.'
-    });
-  }
+app.get('/api/auth/config', (_req, res) => {
+  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
 });
 
-/*
- * VERIFY MSG91 OTP SERVER-SIDE
- *
- * The browser sends only reqId + OTP. The MSG91
- * Authkey remains on the server. MSG91 returns
- * the access-token (JWT) after successful OTP
- * verification.
- */
-app.post('/api/auth/verify-otp', async (req, res) => {
-  try {
-    const { reqId, otp } = req.body;
-
-    if (!reqId || !/^\d{4,8}$/.test(String(otp || ''))) {
-      return res.status(400).json({
-        error: 'Request ID and a valid OTP are required.'
-      });
-    }
-
-    const msg91Authkey = process.env.MSG91_AUTHKEY;
-
-    if (!msg91Authkey) {
-      console.error('MSG91_AUTHKEY is missing.');
-      return res.status(500).json({
-        error: 'OTP service is not configured.'
-      });
-    }
-
-    const verifyResponse = await fetch(
-      'https://api.msg91.com/api/v5/widget/verifyOtp',
-      {
-        method: 'POST',
-        headers: {
-          authkey: msg91Authkey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          reqId: String(reqId),
-          otp: String(otp)
-        })
-      }
-    );
-
-    const verifyData = await verifyResponse.json().catch(() => ({}));
-
-    if (!verifyResponse.ok) {
-      console.error('MSG91 OTP verification failed:', verifyData);
-      return res.status(400).json({
-        error: verifyData?.message || 'Invalid or expired OTP.'
-      });
-    }
-
-    const accessToken =
-      verifyData?.['access-token'] ||
-      verifyData?.accessToken ||
-      verifyData?.data?.['access-token'] ||
-      verifyData?.data?.accessToken ||
-      verifyData?.token ||
-      '';
-
-    if (!accessToken) {
-      console.error('MSG91 verification returned no access token:', verifyData);
-      return res.status(502).json({
-        error: 'OTP was accepted, but MSG91 did not return a verification token.'
-      });
-    }
-
-    res.json({ ok: true, accessToken });
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({
-      error: 'Unable to verify OTP right now.'
-    });
-  }
-});
-
-/*
- * SIGNUP
- *
- * The account is created ONLY after the
- * MSG91 access token has been verified
- * server-side.
- */
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      mobile,
-      password,
-      confirmPassword,
-      otpAccessToken
-    } = req.body;
+    const { name, email, password, confirmPassword, selfie } = req.body;
+    const cleanName = String(name || '').trim();
+    const emailAddress = String(email || '').trim().toLowerCase();
 
-    if (
-      !name?.trim() ||
-      !email?.trim() ||
-      !mobile?.trim() ||
-      !password ||
-      !confirmPassword
-    ) {
-      return res.status(400).json({
-        error:
-          'Name, email, mobile, and password are required.'
-      });
+    if (!cleanName || !emailAddress || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'Name, email, and both password fields are required.' });
     }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        error:
-          'Password must be at least 6 characters.'
-      });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+      return res.status(400).json({ error: 'Enter a valid email address.' });
     }
-
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
     if (password !== confirmPassword) {
-      return res.status(400).json({
-        error: 'Passwords do not match.'
-      });
+      return res.status(400).json({ error: 'Passwords do not match.' });
+    }
+    if (!validProfilePhoto(selfie)) {
+      return res.status(400).json({ error: 'Take a live selfie to finish creating your account.' });
     }
 
-    if (!otpAccessToken) {
-      return res.status(400).json({
-        error:
-          'Please verify your mobile number first.'
-      });
-    }
-
-    const normalizedMobile =
-      normalizeIndianMobile(mobile);
-
-    if (!normalizedMobile) {
-      return res.status(400).json({
-        error:
-          'Enter a valid Indian mobile number.'
-      });
-    }
-
-    const emailAddress =
-      email.trim().toLowerCase();
-
-    /*
-     * MSG91 Authkey must remain on the server.
-     */
-    const msg91Authkey =
-      process.env.MSG91_AUTHKEY;
-
-    if (!msg91Authkey) {
-      console.error(
-        'MSG91_AUTHKEY is missing.'
-      );
-
-      return res.status(500).json({
-        error:
-          'OTP service is not configured.'
-      });
-    }
-
-    /*
-     * Verify the access token returned by
-     * the MSG91 OTP Widget.
-     *
-     * MSG91 expects:
-     * authkey
-     * access-token
-     */
-    const verifyResponse = await fetch(
-      'https://control.msg91.com/api/v5/widget/verifyAccessToken',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':
-            'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({
-          authkey: msg91Authkey,
-          'access-token': otpAccessToken
-        })
-      }
+    const { rows: [existing] } = await pool.query(
+      'SELECT id FROM users WHERE lower(email) = $1', [emailAddress]
     );
+    if (existing) return res.status(409).json({ error: 'That email is already registered. Please log in.' });
 
-    const verifyData =
-      await verifyResponse.json().catch(
-        () => ({})
-      );
-
-    if (!verifyResponse.ok) {
-      console.error(
-        'MSG91 access token verification failed:',
-        verifyData
-      );
-
-      return res.status(400).json({
-        error:
-          'Mobile verification failed. Please request a new OTP.'
-      });
-    }
-
-    /*
-     * Try to identify the number that MSG91
-     * says was verified.
-     */
-    const verifiedIdentifier =
-      verifyData?.data?.identifier ||
-      verifyData?.data?.mobile ||
-      verifyData?.identifier ||
-      verifyData?.mobile ||
-      '';
-
-    if (verifiedIdentifier) {
-      const verifiedMobile =
-        normalizeIndianMobile(
-          verifiedIdentifier
-        );
-
-      if (
-        verifiedMobile &&
-        verifiedMobile !== normalizedMobile
-      ) {
-        return res.status(400).json({
-          error:
-            'The verified mobile number does not match.'
-        });
-      }
-    }
-
-    /*
-     * Check again immediately before creation.
-     */
-    const existingEmail =
-      await pool.query(
-        'SELECT id FROM users WHERE email = $1',
-        [emailAddress]
-      );
-
-    if (existingEmail.rowCount) {
-      return res.status(409).json({
-        error:
-          'That email is already registered.'
-      });
-    }
-
-    const existingMobile =
-      await pool.query(
-        'SELECT id FROM users WHERE mobile = $1',
-        ['+' + normalizedMobile]
-      );
-
-    if (existingMobile.rowCount) {
-      return res.status(409).json({
-        error:
-          'That mobile number is already registered.'
-      });
-    }
-
-    const hash =
-      await bcrypt.hash(password, 10);
-
-    const {
-      rows: [u]
-    } = await pool.query(
-      `INSERT INTO users
-       (
-         name,
-         email,
-         mobile,
-         mobile_verified,
-         password_hash
-       )
-       VALUES ($1, $2, $3, 1, $4)
-       RETURNING
-         id,
-         name,
-         email,
-         mobile,
-         role`,
-      [
-        name.trim(),
-        emailAddress,
-        '+' + normalizedMobile,
-        hash
-      ]
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { rows: [user] } = await pool.query(
+      `INSERT INTO users (name, email, profile_photo, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email, mobile, role, profile_photo`,
+      [cleanName, emailAddress, selfie, passwordHash]
     );
-
-    res.status(201).json({
-      user: u,
-      token: tokenFor(u)
-    });
+    return finishLogin(res, user, 201);
   } catch (error) {
-    console.error(
-      'Signup error:',
-      error
+    console.error('Signup error:', error);
+    if (String(error?.message || '').toLowerCase().includes('unique')) {
+      return res.status(409).json({ error: 'That email is already registered. Please log in.' });
+    }
+    return res.status(500).json({ error: 'We could not create your account. Please try again.' });
+  }
+});
+
+let googleSigningKeys = [];
+let googleSigningKeysExpireAt = 0;
+async function getGoogleSigningKey(header, callback) {
+  try {
+    if (Date.now() >= googleSigningKeysExpireAt) {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+      if (!response.ok) throw new Error('Could not load Google signing keys.');
+      const payload = await response.json();
+      googleSigningKeys = payload.keys || [];
+      const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 300);
+      googleSigningKeysExpireAt = Date.now() + Math.min(maxAge, 3600) * 1000;
+    }
+    const jwk = googleSigningKeys.find(key => key.kid === header.kid && key.kty === 'RSA');
+    if (!jwk) throw new Error('Google signing key was not found.');
+    callback(null, createPublicKey({ key: jwk, format: 'jwk' }));
+  } catch (error) {
+    callback(error);
+  }
+}
+
+function verifyGoogleCredential(credential, audience) {
+  return new Promise((resolve, reject) => {
+    jwt.verify(
+      credential,
+      getGoogleSigningKey,
+      {
+        algorithms: ['RS256'],
+        audience,
+        issuer: ['accounts.google.com', 'https://accounts.google.com']
+      },
+      (error, claims) => error ? reject(error) : resolve(claims)
     );
+  });
+}
 
-    const message =
-      String(error?.message || '');
-
-    if (
-      message.includes('UNIQUE') ||
-      message.includes('constraint')
-    ) {
-      return res.status(409).json({
-        error:
-          'That email or mobile number is already registered.'
-      });
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const { credential, selfie } = req.body;
+    if (!clientId) return res.status(503).json({ error: 'Google sign-in is not configured on this app yet.' });
+    if (!credential || typeof credential !== 'string' || credential.length > 10_000) {
+      return res.status(400).json({ error: 'Google did not return a valid sign-in credential.' });
     }
 
-    res.status(500).json({
-      error:
-        'Unable to create your account.'
-    });
+    const claims = await verifyGoogleCredential(credential, clientId);
+    const emailAddress = String(claims.email || '').trim().toLowerCase();
+    if (!claims.sub || !emailAddress || !(claims.email_verified === true || claims.email_verified === 'true')) {
+      return res.status(401).json({ error: 'Google could not verify this email address.' });
+    }
+
+    let { rows: [user] } = await pool.query(
+      'SELECT id, name, email, mobile, role, profile_photo, google_id FROM users WHERE google_id = $1',
+      [claims.sub]
+    );
+
+    if (user) {
+      if (emailAddress !== user.email) {
+        const { rows: [emailOwner] } = await pool.query(
+          'SELECT id FROM users WHERE lower(email) = $1 AND id <> $2', [emailAddress, user.id]
+        );
+        if (emailOwner) return res.status(409).json({ error: 'This Google email belongs to a different account.' });
+        await pool.query('UPDATE users SET email = $1, name = $2 WHERE id = $3', [emailAddress, claims.name || user.name, user.id]);
+        user.email = emailAddress;
+        user.name = claims.name || user.name;
+      }
+      return finishLogin(res, user);
+    }
+
+    const { rows: [emailOwner] } = await pool.query(
+      'SELECT id, name, email, mobile, role, profile_photo, google_id FROM users WHERE lower(email) = $1',
+      [emailAddress]
+    );
+    if (emailOwner) {
+      const authoritative = emailAddress.endsWith('@gmail.com') || Boolean(claims.hd);
+      if (!authoritative) return res.status(409).json({ error: 'Log in with your password first to connect this Google account.' });
+      await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [claims.sub, emailOwner.id]);
+      emailOwner.google_id = claims.sub;
+      if (!emailOwner.profile_photo && validProfilePhoto(selfie)) {
+        await pool.query('UPDATE users SET profile_photo = $1 WHERE id = $2', [selfie, emailOwner.id]);
+        emailOwner.profile_photo = selfie;
+      }
+      return finishLogin(res, emailOwner);
+    }
+
+    if (!validProfilePhoto(selfie)) {
+      return res.status(400).json({ error: 'Take a live selfie before creating a new account with Google.' });
+    }
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+    const { rows: [newUser] } = await pool.query(
+      `INSERT INTO users (name, email, google_id, profile_photo, password_hash)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, email, mobile, role, profile_photo`,
+      [String(claims.name || emailAddress.split('@')[0]).trim(), emailAddress, claims.sub, selfie, passwordHash]
+    );
+    return finishLogin(res, newUser, 201);
+  } catch (error) {
+    console.error('Google sign-in error:', error.message);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
+      return res.status(401).json({ error: 'Google sign-in expired or could not be verified. Please try again.' });
+    }
+    return res.status(500).json({ error: 'Google sign-in is temporarily unavailable. Please try again.' });
   }
 });
 
@@ -529,11 +274,16 @@ app.post('/api/auth/login', async (req, res) => {
       password
     } = req.body;
 
+    const emailAddress = String(email || '').trim().toLowerCase();
+    if (!emailAddress || !password) {
+      return res.status(400).json({ error: 'Enter your email and password.' });
+    }
+
     const {
       rows: [u]
     } = await pool.query(
       'SELECT * FROM users WHERE email = $1',
-      [email?.toLowerCase()]
+      [emailAddress]
     );
 
     if (
@@ -549,16 +299,7 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    res.json({
-      user: {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        mobile: u.mobile,
-        role: u.role
-      },
-      token: tokenFor(u)
-    });
+    finishLogin(res, u);
   } catch (error) {
     console.error(
       'Login error:',
@@ -574,11 +315,11 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const { rows: [user] } = await pool.query(
-      'SELECT id, name, email, mobile, role FROM users WHERE id = $1',
+      'SELECT id, name, email, mobile, role, profile_photo FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!user) return res.status(401).json({ error: 'Please sign in again.' });
-    res.json({ user });
+    res.json({ user: publicUser(user) });
   } catch (error) {
     console.error('Session lookup error:', error);
     res.status(500).json({ error: 'Unable to restore your session.' });
