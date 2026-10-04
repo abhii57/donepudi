@@ -282,6 +282,14 @@ async function load() {
 
   if (!grid) return;
 
+  if (!state.user) {
+    state.articles = [];
+    const announcements = $('#announcements');
+    if (announcements) announcements.hidden = true;
+    grid.innerHTML = '<div class="login-gate"><h3>Stories from Donepudi</h3><p>Log in or create an account to see community posts and announcements.</p><button class="primary" onclick="openAuth(\'login\')">Log in to continue →</button></div>';
+    return;
+  }
+
   try {
     state.articles =
       await api(
@@ -381,20 +389,6 @@ async function loadMembers() {
   }
 }
 
-let selfieStream = null;
-let googleClientId = '';
-let googleScriptPromise = null;
-let currentAuthMode = 'login';
-
-function stopSelfieCamera() {
-  if (selfieStream) {
-    selfieStream.getTracks().forEach(track => track.stop());
-    selfieStream = null;
-  }
-  const video = $('#selfieVideo');
-  if (video) video.srcObject = null;
-}
-
 function showAuthMessage(message, kind = 'error') {
   const element = $('#authError');
   if (!element) {
@@ -406,137 +400,6 @@ function showAuthMessage(message, kind = 'error') {
   element.hidden = !message;
 }
 
-function loadGoogleIdentityScript() {
-  if (window.google?.accounts?.id) return Promise.resolve();
-  if (googleScriptPromise) return googleScriptPromise;
-  googleScriptPromise = new Promise((resolve, reject) => {
-    let script = document.querySelector('script[data-google-identity]');
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.dataset.googleIdentity = 'true';
-      document.head.appendChild(script);
-    }
-    script.addEventListener('load', resolve, { once: true });
-    script.addEventListener('error', () => reject(new Error('Google sign-in could not load.')), { once: true });
-    if (window.google?.accounts?.id) resolve();
-  });
-  return googleScriptPromise;
-}
-
-async function initializeGoogleButton() {
-  const slot = $('#googleButton');
-  if (!slot) return;
-  const status = $('#googleStatus');
-  try {
-    if (!googleClientId) {
-      const config = await api('/api/auth/config');
-      googleClientId = config.googleClientId || '';
-    }
-    if (!googleClientId) {
-      status.textContent = 'Google sign-in is waiting for app configuration.';
-      return;
-    }
-    await loadGoogleIdentityScript();
-    window.google.accounts.id.initialize({
-      client_id: googleClientId,
-      callback: handleGoogleCredential,
-      auto_select: false,
-      cancel_on_tap_outside: true
-    });
-    slot.replaceChildren();
-    window.google.accounts.id.renderButton(slot, {
-      theme: 'outline',
-      size: 'large',
-      shape: 'pill',
-      text: 'continue_with',
-      width: Math.min(350, Math.max(220, slot.clientWidth || 320))
-    });
-    status.textContent = '';
-  } catch (error) {
-    status.textContent = error.message || 'Google sign-in is unavailable right now.';
-  }
-}
-
-async function handleGoogleCredential(response) {
-  const selfie = $('#selfieData')?.value || '';
-  if (currentAuthMode === 'signup' && !selfie) {
-    showAuthMessage('Take your live selfie first, then choose Google again.');
-    return;
-  }
-  const button = $('#googleButton');
-  if (button) button.classList.add('loading');
-  showAuthMessage('Verifying your Google account…', 'success');
-  try {
-    const result = await api('/api/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ credential: response?.credential, selfie: selfie || undefined })
-    });
-    acceptSignedInUser(result);
-  } catch (error) {
-    showAuthMessage(error.message);
-  } finally {
-    if (button) button.classList.remove('loading');
-  }
-}
-
-async function startSelfieCamera() {
-  showAuthMessage('');
-  if (!navigator.mediaDevices?.getUserMedia) {
-    showAuthMessage('Camera access needs a secure HTTPS connection and a supported browser.');
-    return;
-  }
-  try {
-    stopSelfieCamera();
-    const selfieData = $('#selfieData');
-    if (selfieData) selfieData.value = '';
-    selfieStream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }
-    });
-    const video = $('#selfieVideo');
-    video.srcObject = selfieStream;
-    video.hidden = false;
-    $('#selfiePreview').hidden = true;
-    $('#selfiePlaceholder').hidden = true;
-    $('#startSelfieButton').hidden = true;
-    $('#captureSelfieButton').hidden = false;
-    await video.play();
-  } catch (error) {
-    showAuthMessage(error.name === 'NotAllowedError'
-      ? 'Allow camera access to take the required selfie.'
-      : 'Could not open the camera. Check camera permission and try again.');
-  }
-}
-
-function captureSelfie() {
-  const video = $('#selfieVideo');
-  const input = $('#selfieData');
-  const canvas = $('#selfieCanvas');
-  if (!video?.videoWidth || !input || !canvas) {
-    showAuthMessage('Wait for the camera preview, then take your selfie.');
-    return;
-  }
-  const crop = Math.min(video.videoWidth, video.videoHeight);
-  const x = (video.videoWidth - crop) / 2;
-  const y = (video.videoHeight - crop) / 2;
-  canvas.width = 360;
-  canvas.height = 360;
-  canvas.getContext('2d').drawImage(video, x, y, crop, crop, 0, 0, 360, 360);
-  input.value = canvas.toDataURL('image/jpeg', .74);
-  $('#selfiePreview').src = input.value;
-  $('#selfiePreview').hidden = false;
-  video.hidden = true;
-  $('#selfiePlaceholder').hidden = true;
-  $('#captureSelfieButton').hidden = true;
-  $('#startSelfieButton').hidden = false;
-  $('#startSelfieButton').textContent = 'Retake selfie';
-  stopSelfieCamera();
-  showAuthMessage('Selfie captured. It will be saved with your profile.', 'success');
-}
-
 /*
  * AUTH MODAL
  */
@@ -546,8 +409,6 @@ function openAuth(mode, isAdmin = false) {
   modal.showModal();
   renderAuth(mode, isAdmin);
 }
-
-$('#authModal')?.addEventListener('close', stopSelfieCamera);
 
 function openAdminLogin() {
   openAuth('login', true);
@@ -567,13 +428,10 @@ function openProfile() {
     modal.querySelector('.close').onclick = () => modal.close();
     document.body.appendChild(modal);
   }
-  const picture = state.user.profilePhoto
-    ? `<img class="profile-photo-large" src="${escapeHtml(state.user.profilePhoto)}" alt="Profile selfie">`
-    : `<span class="profile-photo-large profile-initial">${escapeHtml(state.user.name[0].toUpperCase())}</span>`;
+  const picture = `<span class="profile-photo-large profile-initial">${escapeHtml(state.user.name[0].toUpperCase())}</span>`;
   $('#profileContent').innerHTML = `
     <p class="eyebrow">YOUR DONEPUDI PROFILE</p>
     <div class="profile-summary">${picture}<div><h2>${escapeHtml(state.user.name)}</h2><p>${escapeHtml(state.user.email)}</p><span class="role-tag">${escapeHtml(state.user.role)}</span></div></div>
-    <p class="profile-note">Your live selfie is saved as your profile photo.</p>
     <button class="primary" type="button" onclick="logout();this.closest('dialog').close()">Log out</button>`;
   modal.showModal();
 }
@@ -594,16 +452,8 @@ function openCreatePost() {
 }
 
 function renderAuth(mode, isAdmin = false) {
-  stopSelfieCamera();
-  currentAuthMode = mode;
   const auth = $('#authContent');
   if (!auth) return;
-
-  const googleBlock = isAdmin ? '' : `
-    <div class="auth-divider"><span>or continue with</span></div>
-    <div id="googleButton" class="google-button-slot"><button class="google-fallback" type="button" disabled><b>G</b> Continue with Google</button></div>
-    <p id="googleStatus" class="auth-hint" role="status"></p>
-  `;
 
   const errorBlock = '<p id="authError" class="auth-error" role="alert" aria-live="polite" hidden></p>';
 
@@ -615,30 +465,15 @@ function renderAuth(mode, isAdmin = false) {
       </div>
       <form id="signupForm" onsubmit="submitSignup(event)">
         <h2>Create your Donepudi profile</h2>
-        <p class="auth-intro">Join the village conversation. Take a live selfie to set your profile photo.</p>
+        <p class="auth-intro">Join the village conversation and share updates with your community.</p>
         <input name="name" placeholder="Your name" autocomplete="name" required maxlength="80">
         <input name="email" type="email" placeholder="Email address" autocomplete="email" required maxlength="254">
-        <div class="selfie-capture">
-          <div class="selfie-view">
-            <div id="selfiePlaceholder" class="selfie-placeholder"><span>◉</span><b>Live profile selfie</b><small>Your camera photo becomes your profile image.</small></div>
-            <video id="selfieVideo" autoplay playsinline muted hidden></video>
-            <img id="selfiePreview" alt="Your captured profile selfie" hidden>
-            <canvas id="selfieCanvas" hidden></canvas>
-          </div>
-          <input id="selfieData" name="selfie" type="hidden">
-          <div class="selfie-actions">
-            <button id="startSelfieButton" class="ghost" type="button" onclick="startSelfieCamera()">Open camera</button>
-            <button id="captureSelfieButton" class="primary" type="button" onclick="captureSelfie()" hidden>Take selfie</button>
-          </div>
-        </div>
         <input name="password" type="password" placeholder="Create password (8+ characters)" autocomplete="new-password" minlength="8" required>
         <input name="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password" minlength="8" required>
         ${errorBlock}
         <button class="primary" id="signupButton" type="submit">Create account →</button>
-        ${googleBlock}
       </form>
     `;
-    initializeGoogleButton();
     return;
   }
 
@@ -654,21 +489,14 @@ function renderAuth(mode, isAdmin = false) {
       <input name="password" type="password" placeholder="Password" autocomplete="current-password" required>
       ${errorBlock}
       <button class="primary" type="submit">Log in →</button>
-      ${googleBlock}
     </form>
   `;
-  if (!isAdmin) initializeGoogleButton();
 }
 
 async function submitSignup(event) {
   event.preventDefault();
   const form = event.target;
   const button = $('#signupButton');
-  const selfie = form.elements.selfie.value;
-  if (!selfie) {
-    showAuthMessage('Take a live selfie before creating your account.');
-    return;
-  }
   if (form.elements.password.value !== form.elements.confirmPassword.value) {
     showAuthMessage('Passwords do not match.');
     return;
@@ -682,8 +510,7 @@ async function submitSignup(event) {
         name: form.elements.name.value.trim(),
         email: form.elements.email.value.trim(),
         password: form.elements.password.value,
-        confirmPassword: form.elements.confirmPassword.value,
-        selfie
+        confirmPassword: form.elements.confirmPassword.value
       })
     });
     acceptSignedInUser(result);

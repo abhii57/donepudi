@@ -3,7 +3,6 @@ import 'dotenv/config';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { createPublicKey, randomBytes } from 'node:crypto';
 
 import { pool, initializeDatabase } from './db.js';
 
@@ -35,6 +34,8 @@ const secret =
 app.use(express.json({ limit: '8mb' }));
 
 app.use(express.static('public'));
+
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 const tokenFor = u =>
   jwt.sign(
@@ -88,12 +89,6 @@ function adminOnly(req, res, next) {
   });
 }
 
-function validProfilePhoto(value) {
-  return typeof value === 'string' &&
-    /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(value) &&
-    value.length <= 450_000;
-}
-
 function publicUser(user) {
   return {
     id: user.id,
@@ -101,7 +96,6 @@ function publicUser(user) {
     email: user.email,
     mobile: user.mobile || null,
     role: user.role,
-    profilePhoto: user.profile_photo || null
   };
 }
 
@@ -112,13 +106,9 @@ function finishLogin(res, user, status = 200) {
   });
 }
 
-app.get('/api/auth/config', (_req, res) => {
-  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
-});
-
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, selfie } = req.body;
+    const { name, email, password, confirmPassword } = req.body;
     const cleanName = String(name || '').trim();
     const emailAddress = String(email || '').trim().toLowerCase();
 
@@ -134,10 +124,6 @@ app.post('/api/auth/signup', async (req, res) => {
     if (password !== confirmPassword) {
       return res.status(400).json({ error: 'Passwords do not match.' });
     }
-    if (!validProfilePhoto(selfie)) {
-      return res.status(400).json({ error: 'Take a live selfie to finish creating your account.' });
-    }
-
     const { rows: [existing] } = await pool.query(
       'SELECT id FROM users WHERE lower(email) = $1', [emailAddress]
     );
@@ -145,10 +131,10 @@ app.post('/api/auth/signup', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const { rows: [user] } = await pool.query(
-      `INSERT INTO users (name, email, profile_photo, password_hash)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (name, email, password_hash)
+       VALUES ($1, $2, $3)
        RETURNING id, name, email, mobile, role, profile_photo`,
-      [cleanName, emailAddress, selfie, passwordHash]
+      [cleanName, emailAddress, passwordHash]
     );
     return finishLogin(res, user, 201);
   } catch (error) {
@@ -157,110 +143,6 @@ app.post('/api/auth/signup', async (req, res) => {
       return res.status(409).json({ error: 'That email is already registered. Please log in.' });
     }
     return res.status(500).json({ error: 'We could not create your account. Please try again.' });
-  }
-});
-
-let googleSigningKeys = [];
-let googleSigningKeysExpireAt = 0;
-async function getGoogleSigningKey(header, callback) {
-  try {
-    if (Date.now() >= googleSigningKeysExpireAt) {
-      const response = await fetch('https://www.googleapis.com/oauth2/v3/certs');
-      if (!response.ok) throw new Error('Could not load Google signing keys.');
-      const payload = await response.json();
-      googleSigningKeys = payload.keys || [];
-      const maxAge = Number(response.headers.get('cache-control')?.match(/max-age=(\d+)/)?.[1] || 300);
-      googleSigningKeysExpireAt = Date.now() + Math.min(maxAge, 3600) * 1000;
-    }
-    const jwk = googleSigningKeys.find(key => key.kid === header.kid && key.kty === 'RSA');
-    if (!jwk) throw new Error('Google signing key was not found.');
-    callback(null, createPublicKey({ key: jwk, format: 'jwk' }));
-  } catch (error) {
-    callback(error);
-  }
-}
-
-function verifyGoogleCredential(credential, audience) {
-  return new Promise((resolve, reject) => {
-    jwt.verify(
-      credential,
-      getGoogleSigningKey,
-      {
-        algorithms: ['RS256'],
-        audience,
-        issuer: ['accounts.google.com', 'https://accounts.google.com']
-      },
-      (error, claims) => error ? reject(error) : resolve(claims)
-    );
-  });
-}
-
-app.post('/api/auth/google', async (req, res) => {
-  try {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const { credential, selfie } = req.body;
-    if (!clientId) return res.status(503).json({ error: 'Google sign-in is not configured on this app yet.' });
-    if (!credential || typeof credential !== 'string' || credential.length > 10_000) {
-      return res.status(400).json({ error: 'Google did not return a valid sign-in credential.' });
-    }
-
-    const claims = await verifyGoogleCredential(credential, clientId);
-    const emailAddress = String(claims.email || '').trim().toLowerCase();
-    if (!claims.sub || !emailAddress || !(claims.email_verified === true || claims.email_verified === 'true')) {
-      return res.status(401).json({ error: 'Google could not verify this email address.' });
-    }
-
-    let { rows: [user] } = await pool.query(
-      'SELECT id, name, email, mobile, role, profile_photo, google_id FROM users WHERE google_id = $1',
-      [claims.sub]
-    );
-
-    if (user) {
-      if (emailAddress !== user.email) {
-        const { rows: [emailOwner] } = await pool.query(
-          'SELECT id FROM users WHERE lower(email) = $1 AND id <> $2', [emailAddress, user.id]
-        );
-        if (emailOwner) return res.status(409).json({ error: 'This Google email belongs to a different account.' });
-        await pool.query('UPDATE users SET email = $1, name = $2 WHERE id = $3', [emailAddress, claims.name || user.name, user.id]);
-        user.email = emailAddress;
-        user.name = claims.name || user.name;
-      }
-      return finishLogin(res, user);
-    }
-
-    const { rows: [emailOwner] } = await pool.query(
-      'SELECT id, name, email, mobile, role, profile_photo, google_id FROM users WHERE lower(email) = $1',
-      [emailAddress]
-    );
-    if (emailOwner) {
-      const authoritative = emailAddress.endsWith('@gmail.com') || Boolean(claims.hd);
-      if (!authoritative) return res.status(409).json({ error: 'Log in with your password first to connect this Google account.' });
-      await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [claims.sub, emailOwner.id]);
-      emailOwner.google_id = claims.sub;
-      if (!emailOwner.profile_photo && validProfilePhoto(selfie)) {
-        await pool.query('UPDATE users SET profile_photo = $1 WHERE id = $2', [selfie, emailOwner.id]);
-        emailOwner.profile_photo = selfie;
-      }
-      return finishLogin(res, emailOwner);
-    }
-
-    if (!validProfilePhoto(selfie)) {
-      return res.status(400).json({ error: 'Take a live selfie before creating a new account with Google.' });
-    }
-    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
-    const { rows: [newUser] } = await pool.query(
-      `INSERT INTO users (name, email, google_id, profile_photo, password_hash)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, email, mobile, role, profile_photo`,
-      [String(claims.name || emailAddress.split('@')[0]).trim(), emailAddress, claims.sub, selfie, passwordHash]
-    );
-    return finishLogin(res, newUser, 201);
-  } catch (error) {
-    console.error('Google sign-in error:', error.message);
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError' || error.name === 'NotBeforeError') {
-      return res.status(401).json({ error: 'Google sign-in expired or could not be verified. Please try again.' });
-    }
-    return res.status(500).json({ error: 'Google sign-in is temporarily unavailable. Please try again.' });
   }
 });
 
@@ -331,7 +213,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
  */
 app.get(
   '/api/articles',
-  optionalAuth,
+  requireAuth,
   async (req, res) => {
     const { rows } =
       await pool.query(
@@ -686,6 +568,7 @@ app.post(
  */
 app.get(
   '/api/articles/:id/comments',
+  requireAuth,
   async (req, res) => {
     const { rows } =
       await pool.query(
