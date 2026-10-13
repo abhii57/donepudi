@@ -11,6 +11,8 @@ const state = {
 };
 let profileCameraStream = null;
 let capturedProfilePhoto = '';
+let highlightItems = [];
+let highlightIndex = 0;
 
 const $ = selector =>
   document.querySelector(selector);
@@ -194,7 +196,7 @@ function story(article) {
       : '';
 
   return `
-    <article class="story">
+    <article class="story" id="story-${article.id}">
 
       <img
         class="cover"
@@ -275,6 +277,75 @@ function story(article) {
   `;
 }
 
+function renderHighlights(articles) {
+  const section = $('#announcements');
+  const card = $('#highlightCard');
+  if (!section || !card) return;
+
+  highlightItems = articles.filter(article => Boolean(article.is_breaking));
+  highlightIndex = Math.min(highlightIndex, Math.max(0, highlightItems.length - 1));
+  section.hidden = false;
+
+  const counter = $('#highlightCounter');
+  const prev = $('#highlightPrev');
+  const next = $('#highlightNext');
+  const dots = $('#highlightDots');
+  const image = $('#highlightImage');
+  const arrow = $('#highlightOpen');
+  if (counter) counter.textContent = highlightItems.length ? `${highlightIndex + 1} / ${highlightItems.length}` : '0 / 0';
+  if (prev) prev.disabled = highlightItems.length < 2;
+  if (next) next.disabled = highlightItems.length < 2;
+  if (!highlightItems.length) {
+    card.classList.add('empty');
+    $('#highlightCategory').textContent = 'COMMUNITY';
+    $('#highlightTitle').textContent = 'No highlights yet';
+    $('#highlightExcerpt').textContent = 'When an administrator adds a post to highlights, it will appear here.';
+    $('#highlightMeta').textContent = '';
+    if (image) { image.replaceChildren(); image.hidden = true; }
+    if (arrow) arrow.hidden = true;
+    if (dots) dots.replaceChildren();
+    return;
+  }
+
+  const item = highlightItems[highlightIndex];
+  card.classList.remove('empty');
+  $('#highlightCategory').textContent = String(item.category || 'COMMUNITY').toUpperCase();
+  $('#highlightTitle').textContent = item.title || 'Village highlight';
+  $('#highlightExcerpt').textContent = item.excerpt || '';
+  $('#highlightMeta').textContent = `By ${item.author || 'Donepudi'}${item.published_at ? ` · ${new Date(item.published_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}` : ''}`;
+  if (image) {
+    image.replaceChildren();
+    image.hidden = !item.image_url;
+    if (item.image_url) {
+      const photo = document.createElement('img');
+      photo.src = item.image_url;
+      photo.alt = '';
+      photo.onerror = () => { image.hidden = true; };
+      image.append(photo);
+    }
+  }
+  if (arrow) {
+    arrow.hidden = false;
+    arrow.onclick = () => document.getElementById(`story-${item.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  if (dots) {
+    dots.innerHTML = highlightItems.map((_, index) => `<button type="button" class="${index === highlightIndex ? 'active' : ''}" aria-label="Highlight ${index + 1}" data-index="${index}"></button>`).join('');
+    dots.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+      highlightIndex = Number(button.dataset.index);
+      renderHighlights(articles);
+    }));
+  }
+}
+
+function moveHighlight(direction) {
+  if (highlightItems.length < 2) return;
+  highlightIndex = (highlightIndex + direction + highlightItems.length) % highlightItems.length;
+  renderHighlights(state.articles);
+}
+
+$('#highlightPrev')?.addEventListener('click', () => moveHighlight(-1));
+$('#highlightNext')?.addEventListener('click', () => moveHighlight(1));
+
 /*
  * LOAD ARTICLES
  */
@@ -288,6 +359,7 @@ async function load() {
     state.articles = [];
     const announcements = $('#announcements');
     if (announcements) announcements.hidden = true;
+    highlightItems = [];
     grid.innerHTML = '<div class="login-gate"><h3>Stories from Donepudi</h3><p>Log in or create an account to see community posts and announcements.</p><button class="primary" onclick="openAuth(\'login\')">Log in to continue →</button></div>';
     return;
   }
@@ -298,18 +370,7 @@ async function load() {
         '/api/articles'
       );
 
-    const highlights = state.articles.filter(article => Boolean(article.is_breaking));
-    const announcementSection = $('#announcements');
-    const highlightGrid = $('#highlightGrid');
-    if (announcementSection && highlightGrid) {
-      announcementSection.hidden = highlights.length === 0;
-      highlightGrid.innerHTML = highlights.slice(0, 4).map(article => `
-        <article class="highlight-post">
-          ${article.image_url ? `<img src="${escapeHtml(article.image_url)}" alt="" onerror="this.hidden=true">` : ''}
-          <div><span class="highlight-label">VILLAGE ANNOUNCEMENT</span><h3>${escapeHtml(article.title)}</h3><p>${escapeHtml(article.excerpt)}</p><small>By ${escapeHtml(article.author)}</small></div>
-        </article>
-      `).join('');
-    }
+    renderHighlights(state.articles);
 
     grid.innerHTML =
       state.articles

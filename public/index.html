@@ -48,9 +48,17 @@
       <a class="quick-link q-people" href="members.html"><span>♧</span><b>Members</b></a>
     </section>
 
-    <section id="announcements" class="village-highlights" hidden>
-      <div class="section-heading"><div><p class="eyebrow">FROM THE VILLAGE TEAM</p><h2>Highlights & announcements</h2></div><span class="announcement-badge">IMPORTANT</span></div>
-      <div id="highlightGrid" class="highlight-grid"></div>
+    <section id="announcements" class="highlights-section" aria-labelledby="highlights-title" hidden>
+      <div class="highlights-head">
+        <div><p class="eyebrow">FEATURED · FROM THE VILLAGE</p><h2 id="highlights-title">Highlights</h2></div>
+        <div class="highlight-controls"><span id="highlightCounter">0 / 0</span><button type="button" id="highlightPrev" aria-label="Previous highlight" disabled>‹</button><button type="button" id="highlightNext" aria-label="Next highlight" disabled>›</button></div>
+      </div>
+      <article class="highlight-card empty" id="highlightCard">
+        <div class="highlight-image" id="highlightImage" hidden></div><div class="highlight-overlay"></div>
+        <div class="highlight-copy"><span class="highlight-category" id="highlightCategory">COMMUNITY</span><h3 id="highlightTitle">No highlights yet</h3><p id="highlightExcerpt">When an administrator adds a post to highlights, it will appear here.</p><div class="highlight-meta" id="highlightMeta"></div></div>
+        <button type="button" class="highlight-arrow" id="highlightOpen" aria-label="Open highlighted post" hidden>→</button>
+      </article>
+      <div class="highlight-dots" id="highlightDots" aria-label="Highlight position"></div>
     </section>
 
     <section class="feed-section" id="feed">
@@ -80,7 +88,7 @@
   </nav>
 
   <dialog id="authModal" class="app-dialog"><button class="close" onclick="authModal.close()" aria-label="Close">×</button><div id="authContent"></div></dialog>
-  <dialog id="postModal" class="app-dialog"><button class="close" onclick="postModal.close()" aria-label="Close">×</button><form id="postForm"><input name="id" type="hidden"><p class="eyebrow">COMMUNITY POST</p><h2 id="postModalTitle">Create a post</h2><input name="title" placeholder="Give your post a title" required><textarea name="excerpt" placeholder="What’s happening in Donepudi?" required></textarea><input name="category" value="Community" placeholder="Category"><label class="check">Add a photo <input name="imageFile" type="file" accept="image/*"></label><input name="imageUrl" type="url" placeholder="Or paste a photo URL (optional)"><label class="check admin-only"><input name="isBreaking" type="checkbox"> Mark as an important update</label><button class="primary" id="postSubmitLabel">Share with the village →</button></form></dialog>
+  <dialog id="postModal" class="app-dialog"><button class="close" onclick="postModal.close()" aria-label="Close">×</button><form id="postForm"><input name="id" type="hidden"><p class="eyebrow">COMMUNITY POST</p><h2 id="postModalTitle">Create a post</h2><input name="title" placeholder="Give your post a title" required><textarea name="excerpt" placeholder="What’s happening in Donepudi?" required></textarea><input name="category" value="Community" placeholder="Category"><label class="check">Add a photo <input name="imageFile" type="file" accept="image/*"></label><input name="imageUrl" type="url" placeholder="Or paste a photo URL (optional)"><label class="check admin-only"><input name="isBreaking" type="checkbox"> Add this post to highlights</label><button class="primary" id="postSubmitLabel">Share with the village →</button></form></dialog>
   <dialog id="userModal" class="app-dialog"><button class="close" onclick="userModal.close()" aria-label="Close">×</button><div id="userContent"></div></dialog>
   <dialog id="profileModal" class="app-dialog profile-dialog"><button class="close" onclick="profileModal.close()" aria-label="Close">×</button><div id="profileContent"></div></dialog>
   <dialog id="memberModal" class="app-dialog"><button class="close" onclick="memberModal.close()" aria-label="Close">×</button><form id="memberForm"><p class="eyebrow">MEMBER DIRECTORY</p><h2>Add a member</h2><input name="name" placeholder="Member name" required><label class="check">Upload photo <input name="photoFile" type="file" accept="image/*"></label><input name="photoUrl" type="url" placeholder="Or paste a photo URL"><textarea name="note" placeholder="Member note" required></textarea><button class="primary">Add member →</button></form></dialog>
