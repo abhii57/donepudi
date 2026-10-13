@@ -81,11 +81,29 @@ function adminOnly(req, res, next) {
   requireAuth(req, res, () => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
-        error: 'Only editors can publish news.'
+        error: 'Only administrators can do that.'
       });
     }
 
-    next();
+    completeProfileOnly(req, res, next);
+  });
+}
+
+function completeProfileOnly(req, res, next) {
+  requireAuth(req, res, async () => {
+    try {
+      const { rows: [user] } = await pool.query(
+        'SELECT mobile, profile_photo FROM users WHERE id = $1',
+        [req.user.id]
+      );
+      if (!user?.mobile || !user?.profile_photo) {
+        return res.status(403).json({ error: 'Complete your profile with a mobile number and live photo to continue.' });
+      }
+      next();
+    } catch (error) {
+      console.error('Profile check error:', error);
+      res.status(500).json({ error: 'Unable to verify your profile.' });
+    }
   });
 }
 
@@ -95,6 +113,7 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     mobile: user.mobile || null,
+    profilePhoto: user.profile_photo || null,
     role: user.role,
   };
 }
@@ -146,6 +165,32 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
+app.put('/api/auth/profile', requireAuth, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const mobile = String(req.body.mobile || '').replace(/[^\d+]/g, '');
+    const profilePhoto = String(req.body.profilePhoto || '');
+    if (!name || name.length > 80) return res.status(400).json({ error: 'Enter a username up to 80 characters.' });
+    if (!/^\+?[1-9]\d{7,14}$/.test(mobile)) return res.status(400).json({ error: 'Enter a valid mobile number.' });
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(profilePhoto)) return res.status(400).json({ error: 'Capture a profile photo with your camera.' });
+    const { rows: [existing] } = await pool.query(
+      'SELECT id FROM users WHERE mobile = $1 AND id <> $2',
+      [mobile, req.user.id]
+    );
+    if (existing) return res.status(409).json({ error: 'That mobile number is already in use.' });
+    const { rows: [user] } = await pool.query(
+      'UPDATE users SET name = $1, mobile = $2, profile_photo = $3 WHERE id = $4 RETURNING id, name, email, mobile, role, profile_photo',
+      [name, mobile, profilePhoto, req.user.id]
+    );
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+    res.json({ user: publicUser(user) });
+  } catch (error) {
+    if (String(error?.message || '').toLowerCase().includes('unique')) return res.status(409).json({ error: 'That mobile number is already in use.' });
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Unable to save your profile.' });
+  }
+});
+
 /*
  * LOGIN
  */
@@ -164,7 +209,7 @@ app.post('/api/auth/login', async (req, res) => {
     const {
       rows: [u]
     } = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
+      'SELECT * FROM users WHERE lower(email) = $1',
       [emailAddress]
     );
 
@@ -213,7 +258,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
  */
 app.get(
   '/api/articles',
-  requireAuth,
+  completeProfileOnly,
   async (req, res) => {
     const { rows } =
       await pool.query(
@@ -254,6 +299,7 @@ app.get(
  */
 app.get(
   '/api/members',
+  adminOnly,
   async (_req, res) => {
     const { rows } =
       await pool.query(
@@ -355,7 +401,7 @@ app.post(
  */
 app.post(
   '/api/articles',
-  requireAuth,
+  adminOnly,
   async (req, res) => {
     const {
       title,
@@ -518,7 +564,7 @@ app.delete(
  */
 app.post(
   '/api/articles/:id/like',
-  requireAuth,
+  completeProfileOnly,
   async (req, res) => {
     const id =
       +req.params.id;
@@ -568,7 +614,7 @@ app.post(
  */
 app.get(
   '/api/articles/:id/comments',
-  requireAuth,
+  completeProfileOnly,
   async (req, res) => {
     const { rows } =
       await pool.query(
@@ -589,7 +635,7 @@ app.get(
 
 app.post(
   '/api/articles/:id/comments',
-  requireAuth,
+  completeProfileOnly,
   async (req, res) => {
     if (
       !req.body.content?.trim()

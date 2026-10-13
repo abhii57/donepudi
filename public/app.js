@@ -9,6 +9,8 @@ const state = {
   })(),
   articles: []
 };
+let profileCameraStream = null;
+let capturedProfilePhoto = '';
 
 const $ = selector =>
   document.querySelector(selector);
@@ -120,7 +122,7 @@ function updateAccount() {
       `
       : '';
 
-  const createPostButton = $('#postModal')
+  const createPostButton = state.user.role === 'admin' && $('#postModal')
     ? `<button class="primary" onclick="openCreatePost()">Create post +</button>`
     : '';
 
@@ -367,6 +369,11 @@ async function loadMembers() {
 
   if (!grid) return;
 
+  if (state.user?.role !== 'admin') {
+    grid.innerHTML = '<div class="login-gate"><h3>Members directory</h3><p>Only administrators can view the member directory.</p></div>';
+    return;
+  }
+
   try {
     const members =
       await api('/api/members');
@@ -428,12 +435,90 @@ function openProfile() {
     modal.querySelector('.close').onclick = () => modal.close();
     document.body.appendChild(modal);
   }
-  const picture = `<span class="profile-photo-large profile-initial">${escapeHtml(state.user.name[0].toUpperCase())}</span>`;
+  if (!modal.dataset.profileCancelGuard) {
+    modal.addEventListener('cancel', event => {
+      if (modal.dataset.required === 'true') event.preventDefault();
+    });
+    modal.dataset.profileCancelGuard = 'true';
+  }
+  const needsProfile = !state.user.mobile || !state.user.profilePhoto;
+  modal.dataset.required = needsProfile ? 'true' : 'false';
+  modal.querySelector('.close').hidden = needsProfile;
+  capturedProfilePhoto = state.user.profilePhoto || '';
+  const picture = state.user.profilePhoto
+    ? `<img class="profile-photo-large" src="${escapeHtml(state.user.profilePhoto)}" alt="Profile photo">`
+    : `<span class="profile-photo-large profile-initial">${escapeHtml(state.user.name[0].toUpperCase())}</span>`;
   $('#profileContent').innerHTML = `
-    <p class="eyebrow">YOUR DONEPUDI PROFILE</p>
+    <p class="eyebrow">${needsProfile ? 'COMPLETE YOUR PROFILE TO CONTINUE' : 'YOUR DONEPUDI PROFILE'}</p>
     <div class="profile-summary">${picture}<div><h2>${escapeHtml(state.user.name)}</h2><p>${escapeHtml(state.user.email)}</p><span class="role-tag">${escapeHtml(state.user.role)}</span></div></div>
-    <button class="primary" type="button" onclick="logout();this.closest('dialog').close()">Log out</button>`;
+    ${needsProfile ? `<form id="profileSetupForm" onsubmit="saveProfile(event)">
+      <input name="name" placeholder="Username" autocomplete="nickname" maxlength="80" value="${escapeHtml(state.user.name)}" required>
+      <input name="mobile" type="tel" inputmode="tel" placeholder="Mobile number" autocomplete="tel" value="${escapeHtml(state.user.mobile || '')}" required>
+      <div class="selfie-capture"><div class="selfie-view"><video id="profileCamera" autoplay playsinline hidden></video><img id="profilePhotoPreview" alt="Captured profile photo" ${capturedProfilePhoto ? `src="${escapeHtml(capturedProfilePhoto)}"` : 'hidden'}><div class="selfie-placeholder" id="profileCameraPlaceholder"><span>◎</span><b>Take a live profile picture</b><small>Allow camera access, then capture a clear photo of yourself.</small></div></div><div class="selfie-actions"><button class="ghost" type="button" onclick="startProfileCamera()">Open camera</button><button class="primary" type="button" onclick="captureProfilePhoto()">Capture picture</button></div></div>
+      <canvas id="profileCanvas" hidden></canvas><p id="profileError" class="auth-error" role="alert" hidden></p><button class="primary" type="submit">Save profile and continue →</button>
+    </form>` : ''}
+    ${needsProfile ? '' : '<button class="primary" type="button" onclick="logout();this.closest(\'dialog\').close()">Log out</button>'}`;
   modal.showModal();
+  if (needsProfile) startProfileCamera();
+}
+
+async function startProfileCamera() {
+  const video = $('#profileCamera');
+  const placeholder = $('#profileCameraPlaceholder');
+  if (!video) return;
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access requires a secure connection and a supported browser.');
+    profileCameraStream?.getTracks().forEach(track => track.stop());
+    profileCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    video.srcObject = profileCameraStream;
+    video.hidden = false;
+    if (placeholder) placeholder.hidden = true;
+  } catch (error) {
+    const message = $('#profileError');
+    if (message) { message.textContent = error.message || 'Please allow camera access to continue.'; message.hidden = false; }
+  }
+}
+
+function captureProfilePhoto() {
+  const video = $('#profileCamera');
+  const canvas = $('#profileCanvas');
+  if (!video || !canvas || !video.videoWidth) return showProfileError('Open the camera and allow access before capturing your picture.');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  capturedProfilePhoto = canvas.toDataURL('image/jpeg', 0.82);
+  const preview = $('#profilePhotoPreview');
+  preview.src = capturedProfilePhoto;
+  preview.hidden = false;
+  video.hidden = true;
+  video.srcObject = null;
+  profileCameraStream?.getTracks().forEach(track => track.stop());
+  profileCameraStream = null;
+  $('#profileCameraPlaceholder').hidden = true;
+  showProfileError('');
+}
+
+function showProfileError(message) {
+  const element = $('#profileError');
+  if (element) { element.textContent = message; element.hidden = !message; }
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+  const form = event.target;
+  if (!capturedProfilePhoto) return showProfileError('Capture your live profile picture to continue.');
+  try {
+    const result = await api('/api/auth/profile', { method: 'PUT', body: JSON.stringify({ name: form.elements.name.value.trim(), mobile: form.elements.mobile.value.trim(), profilePhoto: capturedProfilePhoto }) });
+    state.user = result.user;
+    localStorage.user = JSON.stringify(result.user);
+    $('#profileModal').dataset.required = 'false';
+    $('#profileModal .close').hidden = false;
+    profileCameraStream?.getTracks().forEach(track => track.stop());
+    $('#profileModal').close();
+    updateAccount();
+    await Promise.allSettled([load(), loadMembers()]);
+    toast('Your profile is ready.');
+  } catch (error) { showProfileError(error.message); }
 }
 
 function openCreatePost() {
@@ -528,6 +613,7 @@ function acceptSignedInUser(result) {
   localStorage.user = JSON.stringify(result.user);
   $('#authModal')?.close();
   updateAccount();
+  if (!result.user.mobile || !result.user.profilePhoto) openProfile();
   Promise.allSettled([load(), loadMembers()]);
   toast(`Welcome, ${result.user.name.split(' ')[0]}!`);
 }
@@ -615,6 +701,7 @@ async function restoreSession() {
   }
 
   updateAccount();
+  if (state.user && (!state.user.mobile || !state.user.profilePhoto)) openProfile();
   await Promise.allSettled([load(), loadMembers()]);
 }
 
